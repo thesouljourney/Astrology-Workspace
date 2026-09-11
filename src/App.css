@@ -11,6 +11,8 @@ body {
 
 .workspace {
   max-width: 900px;
+  width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 24px 16px 64px;
 }
@@ -106,6 +108,18 @@ table {
   border-collapse: collapse;
   margin-top: 8px;
   background: #fff;
+}
+
+/* Any element that directly contains a table becomes that table's own
+   horizontal-scroll container, so a wide table (many-column classical
+   tables, long convention strings, etc.) can scroll within its own
+   bounds instead of forcing the whole page wider. Resolves to whatever
+   the table's actual DOM parent already is (a <details>, a settings
+   div, a section) - no new wrapper markup needed for tables that
+   already sit inside one of those. */
+*:has(> table) {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 th,
@@ -227,6 +241,15 @@ th {
   color: #444;
   white-space: nowrap;
   vertical-align: top;
+}
+
+/* On narrow screens, let long bilingual labels wrap instead of forcing
+   their row (and its whole table) wider than the viewport. Desktop is
+   untouched - labels there already fit on one line at 480px+. */
+@media (max-width: 480px) {
+  .detail-table td:first-child {
+    white-space: normal;
+  }
 }
 
 .planet-detail h4 {

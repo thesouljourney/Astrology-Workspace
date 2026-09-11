@@ -563,6 +563,7 @@ export default function ClassicalAstrology({ chart }) {
       </p>
 
       <h4>A. Chart Overview｜命盘总览</h4>
+      <div className="table-scroll">
       <table className="detail-table">
         <tbody>
           <tr>
@@ -651,6 +652,7 @@ export default function ClassicalAstrology({ chart }) {
           </tr>
         </tbody>
       </table>
+      </div>
 
       <h4>B. Planet Evidence｜行星证据</h4>
       {Object.keys(summary.planets).map((key) => planetCard(key, summary))}
@@ -662,6 +664,7 @@ export default function ClassicalAstrology({ chart }) {
       {summary.unresolvedConventions.length === 0 ? (
         <p>None currently unresolved.｜目前无尚未锁定的规则。</p>
       ) : (
+        <div className="table-scroll">
         <table className="detail-table">
           <tbody>
             {summary.unresolvedConventions.map((u) => (
@@ -672,6 +675,7 @@ export default function ClassicalAstrology({ chart }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       <div className="classical-settings">
