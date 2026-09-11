@@ -849,6 +849,134 @@ new regression tests for this refinement).
 
 ---
 
+## 15. Phase 3F: Classical Aspects, Application & Separation
+
+A technical aspect-geometry and relative-motion layer for the seven
+traditional planets — **rule/geometry logic only**, no new astronomical
+calculation, no perfection judgment. Adds `chart.classical.aspects`, 21
+unordered pairs among the seven traditional planets.
+
+**Five classical major aspects only** (Ptolemy's five, cross-checked
+against renaissanceastrology.com's summary and multiple traditional
+glossaries — no disagreement on the set itself): conjunction (0°),
+sextile (60°), square (90°), trine (120°), opposition (180°). No modern
+minor aspects (semisextile, semisquare, quincunx, sesquiquadrate,
+quintile, etc.).
+
+**Orb convention — a genuine sourced disagreement, resolved by explicit
+decision, not silently**: research for this phase found two materially
+different traditional orb/moiety tables using the same "moiety-sum"
+method (allowed orb = sum of the two planets' individual half-orbs):
+William Lilly's *Christian Astrology* (1647) table, and the older
+Ptolemaic/Porphyry table (~2nd–8th century), whose values run roughly
+**double** Lilly's for several planets (e.g. Sun ~15° vs Lilly's 8.5°).
+This was reported to the project owner rather than resolved unilaterally;
+**the owner chose Lilly's table**, for consistency with this project's
+existing Lilly-based conventions already locked in Phase 3B (solar
+condition thresholds) and Phase 3C (traditional mean daily motions).
+
+```
+Lilly's moieties (rules/planetaryMoiety.js):
+Sun 8.5°   Moon 6.25°   Mercury 3.5°   Venus 4°
+Mars 3.75°   Jupiter 6°   Saturn 5°
+```
+
+Allowed orb for a pair = sum of their two moieties (the "moiety
+technique," attested from Claude Dariot, 16th century, onward, and
+consistent with Lilly's own usage).
+
+**Application/separation — from relative motion only, never static
+longitude ordering**: a small forward-time numerical probe
+(`PROBE_DT_DAYS = 0.01`, ~14.4 minutes) projects both planets forward
+using their already-verified signed longitude speeds
+(`speedDegPerDay`, Phase 3B/3C), recomputes the wrap-safe distance to
+the *same* exact aspect angle, and compares — no re-selection of which
+aspect is "nearest" occurs at the future point, so the probe cannot
+"skip past" a different aspect. This handles direct/direct,
+direct/retrograde, both-retrograde, the 0°/360° wraparound, and
+opposition geometry uniformly, with **no retrograde special-casing**
+(cross-checked against Skyscript's "applying and separating aspects"
+forum discussion, which likewise defines application purely from the
+changing distance to exactitude under each planet's actual motion).
+Verified by dedicated tests where retrograde motion produces both an
+applying and a separating result (never hard-coded either way).
+
+**Exact aspect**: a strict `EXACT_EPSILON_DEGREES = 0.0003°` (~1
+arcsecond) numerical-equality tolerance — this is *not* an interpretive
+orb. An aspect is never called "exact" merely for being inside the
+aspect orb; it must be within this tiny tolerance of the literal
+geometric angle. (An earlier internal draft of the applying/separating
+comparison mistakenly reused this same epsilon as a "no significant
+change" buffer between the current and forward-probed orb, which caused
+several genuinely-applying/separating pairs in the verification chart to
+be misclassified "exact" — caught during self-testing before this phase
+was reported as complete, and fixed by removing the epsilon from that
+comparison entirely; "exact" is now returned only from the dedicated
+current-position check.)
+
+**Sign-based vs. degree-based aspect**: research found these are
+materially different, historically layered traditions — whole-sign
+("by sign") aspect doctrine predates and differs from the later
+degree-based/Ptolemaic orb doctrine this project's primary `aspect`
+field implements (Hellenistic astrology used whole-sign relations
+without orbs at all; medieval astrology shifted to degree-based orbs).
+Rather than silently picking one, **both are preserved as separate
+facts** on every pair: `aspect` (degree-based, with orb) and
+`signAspectRelation` (whole-sign, orb-free — conjunction/sextile/
+square/trine/opposition purely by sign-distance, or `null` when the
+signs are 1 or 5 apart, "in aversion," which whole-sign doctrine does
+not treat as an aspect at all).
+
+**Dexter/sinister**: researched (Skyscript's glossary describes the
+rule — aspects cast against the order of the zodiac signs, following
+diurnal motion, are "dexter" and considered more effective than
+"sinister" ones cast with the order of the signs). The geometry (tied to
+which planet is faster/primary in a given configuration) was judged not
+unambiguous enough for a confident first implementation within this
+phase's scope. **Deferred** — `chart.classical.meta.dexterSinisterStatus:
+"deferred"` records this explicitly rather than silently omitting it.
+
+**Reception integration**: each aspect pair carries `reception.aReceivesB`
+/`reception.bReceivesA` as **linked, read-only metadata** referencing
+Phase 3E's already-computed reception matrix — nothing is recomputed,
+and Phase 3E's `receptionQualification: "not_yet_evaluated"` is
+untouched (this phase does not silently mark it "complete").
+
+**No score, no perfection judgment**: `perfectionCandidate` exposes only
+`{isApplying, currentOrb, relativeMotionSupportsPerfection}` — neutral
+technical facts ("this pair is moving toward exact aspect"), never a
+claim that an event "will happen." No `willPerfect`, `horaryOutcome`, or
+similar field exists anywhere.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N 102.9325°E,
+Placidus) — all 21 unique pairs checked, computed from the rules, not
+assumed in advance: **9 pairs within the Lilly moiety orb**, **5
+applying**, **4 separating**, **0 exact** (no pair happens to sit within
+1 arcsecond of a literal exact angle in this chart — expected, since
+exact-to-the-arcsecond aspects are rare at any given moment):
+
+| Pair | Aspect | Orb from Exact | Allowed Orb | Motion |
+|---|---|---|---|---|
+| Sun — Mars | Square | 5°06′ | 12°15′ | Separating |
+| Sun — Jupiter | Conjunction | 2°18′ | 14°30′ | Separating |
+| Sun — Saturn | Square | 7°37′ | 13°30′ | Applying |
+| Moon — Venus | Trine | 7°57′ | 10°15′ | Applying |
+| Moon — Mars | Sextile | 1°38′ | 10°00′ | Separating |
+| Moon — Saturn | Trine | 11°05′ | 11°15′ | Applying |
+| Venus — Saturn | Trine | 3°08′ | 9°00′ | Separating |
+| Mars — Jupiter | Square | 2°48′ | 9°45′ | Applying |
+| Jupiter — Saturn | Square | 9°55′ | 11°00′ | Applying |
+
+Zero new dependencies, zero network calls. All 251 tests pass (221
+carried over from Phase 1–3E unchanged, plus 30 new Phase 3F tests).
+
+This phase does **not** yet equal horary perfection — Translation/
+Collection of Light, Prohibition, Frustration, Refranation, Void of
+Course, and final perfection judgment remain unimplemented and are left
+for a future phase.
+
+---
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```

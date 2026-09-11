@@ -14,6 +14,7 @@ import { SPEED_CONVENTION } from "./rules/planetarySpeed.js";
 import { computeSectConditionDetail } from "./hayzHalb.js";
 import { computeDispositorChain, buildImmediateDispositor } from "./dispositorChain.js";
 import { computeReceptionMatrix, getReceptionForPlanet, computeMutualReceptions } from "./reception.js";
+import { computeAspectMatrix, EXACT_EPSILON_DEGREES } from "./aspects.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -43,6 +44,25 @@ export const CLASSICAL_META = {
   // placeholder for a later default; it means Phase 3E takes no
   // position on it at all.
   receptionQualification: "not_yet_evaluated",
+  // Five classical major aspects only (conjunction/sextile/square/trine/
+  // opposition) — see aspects.js.
+  aspectSystem: "classical_major_five",
+  // Allowed orb per pair = sum of Lilly's planetary moieties (Christian
+  // Astrology, 1647) — chosen over the materially wider Ptolemaic/
+  // Porphyry orb table after a sourced disagreement was reported to the
+  // project owner; see rules/planetaryMoiety.js and the Phase 3F report.
+  aspectOrbConvention: "lilly_moiety_sum",
+  // Strict floating-point-level tolerance for "exact", NOT an
+  // interpretive orb — see aspects.js's EXACT_EPSILON_DEGREES.
+  aspectExactnessToleranceDegrees: EXACT_EPSILON_DEGREES,
+  // Whole-sign aspect relation (aspects[].signAspectRelation) is a
+  // separate, orb-free fact from the degree-based aspect — the two
+  // traditions materially differ historically and neither is treated as
+  // silently overriding the other; see aspects.js.
+  signAspectDoctrine: "whole_sign_separate_fact",
+  // Researched but deferred: the dexter/sinister distinction was judged
+  // not unambiguous enough for a confident first implementation.
+  dexterSinisterStatus: "deferred",
 };
 
 /**
@@ -59,16 +79,39 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
   const sunLongitude = chart.planets.find((pl) => pl.key === "sun").longitude;
 
   // Actual chart placements of the seven traditional planets, reused for
-  // both the dispositor-chain traversal and the reception matrix — no
-  // planet position is looked up a second time independently.
+  // the dispositor-chain traversal, the reception matrix, and the aspect
+  // matrix alike — no planet position/speed is looked up a second time
+  // independently.
   const signByPlanet = {};
   const placements = TRADITIONAL_PLANETS.map((key) => {
     const p = chart.planets.find((pl) => pl.key === key);
     signByPlanet[key] = p.sign.key;
-    return { planet: key, sign: p.sign.key, degreeInSign: p.degreeInSign };
+    return {
+      planet: key,
+      sign: p.sign.key,
+      degreeInSign: p.degreeInSign,
+      longitude: p.longitude,
+      speedDegPerDay: p.speedDegPerDay,
+      signIndex: p.sign.index,
+    };
   });
   const receptionMatrix = computeReceptionMatrix(placements, sect);
   const mutualReceptions = computeMutualReceptions(receptionMatrix);
+
+  // Aspect pairs cross-reference Phase 3E's already-computed reception
+  // matrix as read-only linked metadata (Part R) — reception itself is
+  // not recomputed or modified here.
+  const aspects = computeAspectMatrix(placements).map((pair) => {
+    const aReceivesB = receptionMatrix.find((e) => e.receiver === pair.planetA && e.received === pair.planetB);
+    const bReceivesA = receptionMatrix.find((e) => e.receiver === pair.planetB && e.received === pair.planetA);
+    return {
+      ...pair,
+      reception: {
+        aReceivesB: { types: aReceivesB.types },
+        bReceivesA: { types: bReceivesA.types },
+      },
+    };
+  });
 
   const planets = TRADITIONAL_PLANETS.map((key) => {
     const p = chart.planets.find((pl) => pl.key === key);
@@ -131,5 +174,6 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
     planets,
     receptionMatrix,
     mutualReceptions,
+    aspects,
   };
 }

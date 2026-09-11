@@ -81,6 +81,24 @@ function formatDispositorChain(chain) {
   return chain.map(planetLabel).join(" → ");
 }
 
+const ASPECT_TYPE_LABEL = {
+  conjunction: "Conjunction｜合相",
+  sextile: "Sextile｜六合",
+  square: "Square｜四分",
+  trine: "Trine｜三合",
+  opposition: "Opposition｜对分",
+};
+
+const MOTION_STATUS_LABEL = {
+  applying: "Applying｜入相",
+  separating: "Separating｜出相",
+  exact: "Exact｜正相",
+};
+
+function formatSignedSpeed(speed) {
+  return `${speed >= 0 ? "+" : ""}${speed.toFixed(4)}°/day`;
+}
+
 const TERMINATION_TYPE_LABEL = {
   self_dispositor: "Self-Dispositor｜自主行星",
   loop: "Loop｜循环",
@@ -613,6 +631,110 @@ export default function ClassicalAstrology({ chart }) {
           </tbody>
         </table>
       )}
+
+      <h3>Classical Aspects｜古典相位</h3>
+      <p className="reception-note">
+        Technical geometry and motion only — not a perfection judgment｜仅为技术性几何与运行状态 — 非最终判定
+      </p>
+      {(() => {
+        const withinOrbAspects = classical.aspects.filter((a) => a.aspect.isWithinOrb);
+        if (withinOrbAspects.length === 0) {
+          return <p>No pairs within the classical aspect orb.｜没有配对落在古典相位容许度内。</p>;
+        }
+        return (
+          <>
+            <table className="classical-table">
+              <thead>
+                <tr>
+                  <th>Pair｜配对</th>
+                  <th>Aspect｜相位</th>
+                  <th>Orb from Exact｜距正相度数</th>
+                  <th>Allowed Orb｜容许度</th>
+                  <th>Motion｜运行状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {withinOrbAspects.map((a) => (
+                  <tr key={`${a.planetA}-${a.planetB}`}>
+                    <td>
+                      {planetLabel(a.planetA)} — {planetLabel(a.planetB)}
+                    </td>
+                    <td>{ASPECT_TYPE_LABEL[a.aspect.type]}</td>
+                    <td>{formatDegMin(a.aspect.orbFromExact)}</td>
+                    <td>{formatDegMin(a.aspect.allowedOrb)}</td>
+                    <td>{MOTION_STATUS_LABEL[a.motion.status]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {withinOrbAspects.map((a) => (
+              <details className="planet-detail" key={`${a.planetA}-${a.planetB}-detail`}>
+                <summary>
+                  {planetLabel(a.planetA)} — {planetLabel(a.planetB)}: {ASPECT_TYPE_LABEL[a.aspect.type]}
+                </summary>
+                <table className="detail-table">
+                  <tbody>
+                    <tr>
+                      <td>Aspect｜相位</td>
+                      <td>{ASPECT_TYPE_LABEL[a.aspect.type]}</td>
+                    </tr>
+                    <tr>
+                      <td>Exact Angle｜正相角度</td>
+                      <td>{a.aspect.exactAngle}°</td>
+                    </tr>
+                    <tr>
+                      <td>Current Separation｜当前角距</td>
+                      <td>{formatDMS(a.aspect.angularSeparation)}</td>
+                    </tr>
+                    <tr>
+                      <td>Orb from Exact｜距正相度数</td>
+                      <td>{formatDegMin(a.aspect.orbFromExact)}</td>
+                    </tr>
+                    <tr>
+                      <td>Allowed Orb｜容许度</td>
+                      <td>{formatDegMin(a.aspect.allowedOrb)} (moiety sum｜半径之和)</td>
+                    </tr>
+                    <tr>
+                      <td>Whole-Sign Relation｜整宫相位</td>
+                      <td>{a.signAspectRelation ? ASPECT_TYPE_LABEL[a.signAspectRelation] : "None (aversion)｜无（失位）"}</td>
+                    </tr>
+                    <tr>
+                      <td>Motion｜运行状态</td>
+                      <td>{MOTION_STATUS_LABEL[a.motion.status]}</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        {planetLabel(a.planetA)} Speed｜{planetLabel(a.planetA)}速度
+                      </td>
+                      <td>{formatSignedSpeed(a.motion.planetASpeed)}</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        {planetLabel(a.planetB)} Speed｜{planetLabel(a.planetB)}速度
+                      </td>
+                      <td>{formatSignedSpeed(a.motion.planetBSpeed)}</td>
+                    </tr>
+                    <tr>
+                      <td>Reception (dignity)｜接纳（尊贵）</td>
+                      <td>
+                        {planetLabel(a.planetA)} receives {planetLabel(a.planetB)}:{" "}
+                        {a.reception.aReceivesB.types.length > 0
+                          ? a.reception.aReceivesB.types.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ")
+                          : "None｜无"}
+                        ; {planetLabel(a.planetB)} receives {planetLabel(a.planetA)}:{" "}
+                        {a.reception.bReceivesA.types.length > 0
+                          ? a.reception.bReceivesA.types.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ")
+                          : "None｜无"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </details>
+            ))}
+          </>
+        );
+      })()}
 
       <h3>Planet Detail｜行星详情</h3>
       {classical.planets.map((p) => (

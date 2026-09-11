@@ -24,6 +24,11 @@ describe("Classical chart integration (verification case)", () => {
       hayzHalbConvention: "traditional_halb_base_hayz_full",
       receptionConvention: "traditional_five_positive_dignities",
       receptionQualification: "not_yet_evaluated",
+      aspectSystem: "classical_major_five",
+      aspectOrbConvention: "lilly_moiety_sum",
+      aspectExactnessToleranceDegrees: 0.0003,
+      signAspectDoctrine: "whole_sign_separate_fact",
+      dexterSinisterStatus: "deferred",
     });
   });
 
