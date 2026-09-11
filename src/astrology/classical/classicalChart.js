@@ -19,6 +19,7 @@ import {
   computeDirectPerfection,
   DIRECT_PERFECTION_SEARCH_HORIZON_DAYS,
   DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES,
+  REFRANATION_CONVENTION,
 } from "./directPerfection.js";
 
 export const CLASSICAL_META = {
@@ -92,12 +93,17 @@ export const CLASSICAL_META = {
   // perfects/does_not_perfect judgment. See directPerfection.js and
   // README.
   signIngressConvention: "requires_historical_rule",
-  // Refranation (an applying significator turning retrograde before the
-  // aspect can perfect, such that it never reaches exactitude) follows
-  // the definition corroborated by Astrodienst's Astrowiki and
-  // astrologysoftware.com's dictionary — NOT merely "any retrograde
-  // event." See directPerfection.js.
-  refranationConvention: "retrograde_prevents_perfection_within_horizon",
+  // Refranation: an applying significator stations from direct to
+  // retrograde AND, per that station's own local before/after evidence,
+  // the application demonstrably withdraws (orb-from-exact increases).
+  // This is a LOCAL judgment about the moment of reversal — deliberately
+  // independent of directPerfectionSearchHorizonDays, and never erased
+  // if a later, separate re-application happens to perfect. Follows the
+  // definition corroborated by Astrodienst's Astrowiki,
+  // astrologysoftware.com's dictionary, and a third independent summary
+  // — NOT merely "any retrograde event," and NOT "no exactitude found
+  // within the search horizon." See directPerfection.js.
+  refranationConvention: REFRANATION_CONVENTION,
 };
 
 /**

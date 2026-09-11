@@ -812,7 +812,7 @@ export default function ClassicalAstrology({ chart }) {
                               <td>Refranation｜反相</td>
                               <td>
                                 {dp.refranation.occurs
-                                  ? `Yes｜是 — ${planetLabel(dp.refranation.planet)} @ ${formatUTCTimestamp(dp.refranation.timestamp)}`
+                                  ? `Yes｜是 — ${planetLabel(dp.refranation.planet)} direct→retrograde @ ${formatUTCTimestamp(dp.refranation.timestampUTC)} (orb ${formatDegMin(dp.refranation.orbBeforeReversal)} → ${formatDegMin(dp.refranation.orbAfterReversal)})`
                                   : "No｜否"}
                               </td>
                             </tr>

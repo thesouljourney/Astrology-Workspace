@@ -424,6 +424,153 @@ describe("TEST 29: Full verification chart - computed, not pre-assumed - and Pha
   });
 });
 
+describe("Refranation refinement: decoupled from the search horizon, based on local orb-trend evidence", () => {
+  it("REFINEMENT 1: applying -> motion reversal -> orb begins increasing before exactitude qualifies as refranation", () => {
+    // B applies toward square(90) from below (85 -> up to 89, never
+    // reaching exact), then stations retrograde and moves back down,
+    // away from 90 - the orb genuinely begins increasing right after
+    // the reversal (and exactitude is never reached).
+    const raw = scanForAspectEvents({
+      getStateA: () => ({ longitude: 0, speedDegPerDay: 0 }),
+      getStateB: (t) => (t <= 4 ? { longitude: 85 + 1 * t, speedDegPerDay: 1 } : { longitude: 89 - 1 * (t - 4), speedDegPerDay: -1 }),
+      exactAngle: 90,
+      horizonDays: 30,
+      coarseStepDays: 0.25,
+    });
+    const station = raw.stationEvents.find((e) => e.fromMotion === "direct" && e.toMotion === "retrograde");
+    expect(station).toBeDefined();
+    expect(station.orbAfterReversal).toBeGreaterThan(station.orbBeforeReversal);
+    expect(station.applicationReversedAway).toBe(true);
+
+    // And confirmed at the production/real-chart level: Mars->Jupiter genuinely qualifies.
+    const chart = calculateChart(VERIFICATION_INPUT);
+    const marsJupiter = chart.classical.directPerfection.find(
+      (d) => [d.planetA, d.planetB].sort().join("-") === "jupiter-mars",
+    );
+    expect(marsJupiter.refranation.occurs).toBe(true);
+    expect(marsJupiter.refranation.motionChange).toEqual({ from: "direct", to: "retrograde" });
+    expect(marsJupiter.refranation.orbAfterReversal).toBeGreaterThan(marsJupiter.refranation.orbBeforeReversal);
+    expect(marsJupiter.refranation.convention).toBe("direct_to_retrograde_application_reversal");
+  });
+
+  it("REFINEMENT 3: a station where application continues toward exactitude (still closing in) is not automatically refranation", () => {
+    // Same TEST 11 scenario: B stations direct->retrograde at t=3, but the
+    // reversal sends it BACK toward the target (still perfects at t=11) -
+    // the orb should NOT show as increasing right after this particular
+    // reversal, since the reversal is what enables the approach.
+    const raw = scanForAspectEvents({
+      getStateA: () => ({ longitude: 0, speedDegPerDay: 0 }),
+      getStateB: (t) => (t <= 3 ? { longitude: 95 + 1 * t, speedDegPerDay: 1 } : { longitude: 98 - 1 * (t - 3), speedDegPerDay: -1 }),
+      exactAngle: 90,
+      horizonDays: 30,
+      coarseStepDays: 0.25,
+    });
+    const station = raw.stationEvents.find((e) => e.fromMotion === "direct" && e.toMotion === "retrograde");
+    expect(station).toBeDefined();
+    // At t=3 the orb is 8 (98-90); 1 day before (t=2) orb=97-90=7 (still
+    // approaching under direct motion); 1 day after (t=4) orb=97-90=7
+    // (now approaching under retrograde motion) - the reversal does NOT
+    // cause the orb to increase, so this must not be flagged as refranation.
+    expect(station.applicationReversedAway).toBe(false);
+    expect(raw.exactitudeFound).toBe(true);
+  });
+
+  it("REFINEMENT 5: search-horizon exhaustion alone (no station at all) is not refranation", () => {
+    const raw = scanForAspectEvents({
+      getStateA: () => ({ longitude: 0, speedDegPerDay: 0.05 }),
+      getStateB: (t) => ({ longitude: 50 + 0.02 * t, speedDegPerDay: 0.02 }),
+      exactAngle: 0,
+      horizonDays: 30,
+      coarseStepDays: 0.25,
+    });
+    expect(raw.exactitudeFound).toBe(false);
+    expect(raw.stationEvents).toHaveLength(0);
+    // No station at all means no refranation candidate can exist - the
+    // production layer's refranation.occurs would correctly be false here.
+  });
+
+  it("REFINEMENT 6: refranation determination does not depend on the search horizon length", () => {
+    const buildScenario = (horizonDays) =>
+      scanForAspectEvents({
+        getStateA: () => ({ longitude: 0, speedDegPerDay: 0 }),
+        getStateB: (t) => (t <= 4 ? { longitude: 85 + 1 * t, speedDegPerDay: 1 } : { longitude: 89 - 1 * (t - 4), speedDegPerDay: -1 }),
+        exactAngle: 90,
+        horizonDays,
+        coarseStepDays: 0.25,
+      });
+    const short = buildScenario(15); // just long enough to capture the station
+    const long = buildScenario(180); // the full production horizon
+    const stationShort = short.stationEvents.find((e) => e.toMotion === "retrograde");
+    const stationLong = long.stationEvents.find((e) => e.toMotion === "retrograde");
+    expect(stationShort.applicationReversedAway).toBe(true);
+    expect(stationLong.applicationReversedAway).toBe(true);
+    expect(stationShort.orbBeforeReversal).toBeCloseTo(stationLong.orbBeforeReversal, 6);
+    expect(stationShort.orbAfterReversal).toBeCloseTo(stationLong.orbAfterReversal, 6);
+  });
+
+  it("REFINEMENT 7: raw motion-change detection captures before/after orb evidence for BOTH transition directions", () => {
+    // direct -> retrograde
+    const d2r = scanForAspectEvents({
+      getStateA: () => ({ longitude: 0, speedDegPerDay: 0 }),
+      getStateB: (t) => (t <= 5 ? { longitude: 1 * t, speedDegPerDay: 1 } : { longitude: 5 - 1 * (t - 5), speedDegPerDay: -1 }),
+      exactAngle: 90,
+      horizonDays: 20,
+      coarseStepDays: 0.25,
+    });
+    const d2rStation = d2r.stationEvents.find((e) => e.fromMotion === "direct" && e.toMotion === "retrograde");
+    expect(d2rStation).toHaveProperty("orbBeforeReversal");
+    expect(d2rStation).toHaveProperty("orbAfterReversal");
+    expect(d2rStation).toHaveProperty("applicationReversedAway");
+
+    // retrograde -> direct
+    const r2d = scanForAspectEvents({
+      getStateA: () => ({ longitude: 0, speedDegPerDay: 0 }),
+      getStateB: (t) => (t <= 5 ? { longitude: 20 - 1 * t, speedDegPerDay: -1 } : { longitude: 15 + 1 * (t - 5), speedDegPerDay: 1 }),
+      exactAngle: 90,
+      horizonDays: 20,
+      coarseStepDays: 0.25,
+    });
+    const r2dStation = r2d.stationEvents.find((e) => e.fromMotion === "retrograde" && e.toMotion === "direct");
+    expect(r2dStation).toHaveProperty("orbBeforeReversal");
+    expect(r2dStation).toHaveProperty("orbAfterReversal");
+    expect(r2dStation).toHaveProperty("applicationReversedAway");
+  });
+
+  it("REFINEMENT 8-9: Phase 1-3F values remain unchanged, and the verification chart's refranation results are recomputed, not forced", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    expect(chart.classical.meta.refranationConvention).toBe("direct_to_retrograde_application_reversal");
+    expect(chart.classical.meta.aspectOrbConvention).toBe("lilly_moiety_sum");
+    expect(chart.classical.meta.directPerfectionSearchHorizonDays).toBe(180);
+
+    const marsJupiter = chart.classical.directPerfection.find(
+      (d) => [d.planetA, d.planetB].sort().join("-") === "jupiter-mars",
+    );
+    const jupiterSaturn = chart.classical.directPerfection.find(
+      (d) => [d.planetA, d.planetB].sort().join("-") === "jupiter-saturn",
+    );
+    expect(marsJupiter.refranation.occurs).toBe(true);
+    expect(marsJupiter.refranation.planet).toBe("mars");
+    expect(jupiterSaturn.refranation.occurs).toBe(true);
+    expect(jupiterSaturn.refranation.planet).toBe("jupiter");
+    // Neither of the three ingress-only pairs (Sun-Saturn, Moon-Venus,
+    // Moon-Saturn) involves any refranation.
+    for (const key of ["mars-sun", "moon-venus", "moon-saturn"]) {
+      const pair = chart.classical.directPerfection.find((d) => [d.planetA, d.planetB].sort().join("-") === key);
+      expect(pair.refranation.occurs).toBe(false);
+    }
+
+    // Phase 1-3F spot checks
+    const sunPlanet = chart.planets.find((p) => p.key === "sun");
+    expect(sunPlanet.sign.english).toBe("Scorpio");
+    expect(chart.points.length).toBe(26);
+    const venus = findClassical(chart, "venus");
+    expect(venus.totalEssentialScore).toBe(-5);
+    expect(venus.sectConditionDetail.hayz.isHayz).toBe(true);
+    const withinOrb = chart.classical.aspects.filter((a) => a.aspect.isWithinOrb);
+    expect(withinOrb.length).toBe(9);
+  });
+});
+
 describe("Refranation-specific requirements", () => {
   it("generic retrograde does not automatically mean refranation", () => {
     const chart = calculateChart(VERIFICATION_INPUT);

@@ -63,22 +63,48 @@
  * does_not_perfect. See `chart.classical.meta.signIngressConvention`.
  *
  * ====================================================================
- * REFRANATION — cross-checked against Astrodienst's Astrowiki and
- * astrologysoftware.com's dictionary (consistent with each other):
+ * REFRANATION — cross-checked against Astrodienst's Astrowiki,
+ * astrologysoftware.com's dictionary, and a third independent summary
+ * (all consistent with each other, no material disagreement found):
  * ====================================================================
  * Refranation occurs when an applying significator turns RETROGRADE
- * before the aspect perfects, and as a direct result the aspect never
- * reaches exactitude. Critically — per both sources — refranation does
- * NOT occur merely because a station happened: if the pair still goes
- * on to complete the aspect (even after a station, even while one
- * planet is retrograde), that is not refranation, only a delay. This
- * module therefore only reports `refranation.occurs: true` when BOTH
- * (a) a direct-to-retrograde station was detected before/during the
- * search, AND (b) no exactitude was ever found within the search
- * horizon. A planet that starts the search already retrograde and
- * simply continues toward exactitude is not refranation (no station
- * event occurs at all in that case) — see TEST "generic retrograde !=
- * automatically refranation".
+ * before the aspect perfects, and — as a DIRECT, LOCAL consequence of
+ * that reversal — the application withdraws (the distance to the
+ * targeted exact aspect starts increasing instead of decreasing). All
+ * three sources describe the triggering direction the same way
+ * ("turns retrograde," never the reverse); no source describes a
+ * retrograde-to-direct station as refranation, so that direction is not
+ * treated as historically qualifying here — though the raw station
+ * detector below records BOTH transition directions with the same
+ * local before/after evidence, so a future phase could revisit this
+ * without new instrumentation if a source were found to disagree.
+ *
+ * REVISED DEFINITION (this is a technical, LOCAL judgment about the
+ * moment of reversal, evaluated independently of whether the module's
+ * search later finds a crossing — the 180-day search horizon is a
+ * software safety limit and must never be part of the definition):
+ *   1. the pair is applying;
+ *   2. before exactitude, a relevant planet stations from direct to
+ *      retrograde;
+ *   3. sampled just before and just after that station, the orb-from-
+ *      exact of the CURRENTLY-TARGETED aspect increases rather than
+ *      continuing to decrease (`applicationReversedAway`).
+ * When all three hold, `refranation.occurs: true`, citing the specific
+ * station's evidence (`orbBeforeReversal`/`orbAfterReversal`). This
+ * event is NEVER erased or overwritten later in the same search: per
+ * the project brief, if the pair's original application refrains and
+ * then, much later, a fresh application forms (e.g. after the planet
+ * returns to direct motion and a new approach develops), that is a
+ * SEPARATE future event — this module does not attempt to fully
+ * classify it, and `chart.classical.directPerfection[i].status` may
+ * still read "perfects" (describing that later, distinct crossing)
+ * alongside a populated `refranation` object describing the earlier,
+ * interrupted one. A planet that starts the search already retrograde
+ * and simply continues toward exactitude is not refranation (no
+ * station event occurs at all in that case) — see TEST "generic
+ * retrograde != automatically refranation". Per all three sources, a
+ * station that occurs AFTER the aspect has already perfected can never
+ * retroactively undo that perfection.
  *
  * NO SCORE, no Translation/Collection/Prohibition/Frustration/Void of
  * Course/final horary outcome anywhere in this module.
@@ -123,11 +149,30 @@ export const COARSE_STEP_DAYS = 0.25;
  */
 export const DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES = EXACT_EPSILON_DEGREES;
 
+/**
+ * The selected historical refranation convention — a direct->retrograde
+ * station whose local before/after evidence shows the application
+ * withdrawing. Deliberately does NOT mention the search horizon: that is
+ * an unrelated software safety limit, never part of this definition.
+ */
+export const REFRANATION_CONVENTION = "direct_to_retrograde_application_reversal";
+
 /** Generous safety cap on bisection iterations for the main aspect root — far more than the ~15-20 needed in practice. */
 const MAX_ROOT_ITERATIONS = 60;
 
 /** Fixed iteration count for ingress/station sub-event refinement — sub-minute precision, deterministic. */
 const EVENT_REFINE_ITERATIONS = 30;
+
+/**
+ * Local window (days) used to sample the orb-from-exact just before and
+ * just after a detected station, to determine whether the application
+ * genuinely reversed away (refranation's defining local evidence — see
+ * module doc comment) rather than merely slowing down. Small relative to
+ * how long a classical aspect takes to perfect (days to weeks), but large
+ * enough that even a slow outer-planet pair's orb change is clearly
+ * resolvable above numerical noise.
+ */
+const LOCAL_TREND_WINDOW_DAYS = 1;
 
 const SIGN_KEYS = [
   "aries", "taurus", "gemini", "cancer", "leo", "virgo",
@@ -281,11 +326,27 @@ export function scanForAspectEvents({ getStateA, getStateB, exactAngle, horizonD
         const { t: refinedT } = bisect(f, prevT, prevState.speedDegPerDay, t, curState.speedDegPerDay, {
           maxIterations: EVENT_REFINE_ITERATIONS,
         });
+        // Local evidence: does the orb-from-exact of the CURRENTLY-TARGETED
+        // aspect actually begin increasing after this reversal (a genuine
+        // withdrawal from application), or does the pair keep closing in
+        // regardless (a mere slowdown, not a withdrawal)? This is raw,
+        // direction-agnostic technical data — both direct->retrograde and
+        // retrograde->direct transitions get it recorded; which direction
+        // (if any) counts as historically qualifying "refranation" is a
+        // separate classification decision made by the caller, not baked
+        // in here.
+        const beforeT = Math.max(0, refinedT - LOCAL_TREND_WINDOW_DAYS);
+        const afterT = Math.min(horizonDays, refinedT + LOCAL_TREND_WINDOW_DAYS);
+        const orbBeforeReversal = Math.abs(errorAt(beforeT));
+        const orbAfterReversal = Math.abs(errorAt(afterT));
         stationEvents.push({
           role,
           fromMotion: prevState.speedDegPerDay < 0 ? "retrograde" : "direct",
           toMotion: curState.speedDegPerDay < 0 ? "retrograde" : "direct",
           tDays: refinedT,
+          orbBeforeReversal,
+          orbAfterReversal,
+          applicationReversedAway: orbAfterReversal > orbBeforeReversal,
         });
       }
     }
@@ -432,17 +493,36 @@ export function computeDirectPerfection({ aspectPair, startAstroTime }) {
     events: motionBefore.map(toMotionEvent),
   };
 
-  // Refranation: only when a direct->retrograde station occurred AND
-  // exactitude was never found within the horizon (see module doc comment).
-  const directToRetrogradeStations = raw.stationEvents.filter((e) => e.toMotion === "retrograde");
-  let refranation = { occurs: false, planet: null, timestamp: null, evidence: null };
-  if (!raw.exactitudeFound && directToRetrogradeStations.length > 0) {
-    const first = directToRetrogradeStations[0];
+  // Refranation (see module doc comment for the full definition): the
+  // FIRST direct->retrograde station whose own local before/after
+  // evidence shows the application withdrawing. This is evaluated from
+  // the complete station list, entirely independent of whether the
+  // search later finds an exactitude crossing (that may belong to a
+  // separate, later re-application - see Part 3 of the brief) and
+  // independent of the search horizon.
+  const qualifyingRefranationStation = raw.stationEvents.find(
+    (e) => e.fromMotion === "direct" && e.toMotion === "retrograde" && e.applicationReversedAway,
+  );
+  let refranation = {
+    occurs: false,
+    planet: null,
+    motionChange: null,
+    timestampUTC: null,
+    orbBeforeReversal: null,
+    orbAfterReversal: null,
+    applicationReversedAway: false,
+    convention: REFRANATION_CONVENTION,
+  };
+  if (qualifyingRefranationStation) {
     refranation = {
       occurs: true,
-      planet: roleToPlanet[first.role],
-      timestamp: startAstroTime.AddDays(first.tDays).date.toISOString(),
-      evidence: `${roleToPlanet[first.role]} turned retrograde before the ${aspect.type} could reach exactitude; no crossing was found within the ${DIRECT_PERFECTION_SEARCH_HORIZON_DAYS}-day search horizon.`,
+      planet: roleToPlanet[qualifyingRefranationStation.role],
+      motionChange: { from: qualifyingRefranationStation.fromMotion, to: qualifyingRefranationStation.toMotion },
+      timestampUTC: startAstroTime.AddDays(qualifyingRefranationStation.tDays).date.toISOString(),
+      orbBeforeReversal: qualifyingRefranationStation.orbBeforeReversal,
+      orbAfterReversal: qualifyingRefranationStation.orbAfterReversal,
+      applicationReversedAway: true,
+      convention: REFRANATION_CONVENTION,
     };
   }
 
@@ -510,7 +590,16 @@ function nonCandidateResult(planetA, planetB, aspect, reasonCode) {
     exactitudePositions: null,
     ingressBeforeExactitude: { planetA: false, planetB: false, events: [] },
     motionChangeBeforeExactitude: { planetA: false, planetB: false, events: [] },
-    refranation: { occurs: false, planet: null, timestamp: null, evidence: null },
+    refranation: {
+      occurs: false,
+      planet: null,
+      motionChange: null,
+      timestampUTC: null,
+      orbBeforeReversal: null,
+      orbAfterReversal: null,
+      applicationReversedAway: false,
+      convention: REFRANATION_CONVENTION,
+    },
     status: "not_a_candidate",
     reasonCode,
   };

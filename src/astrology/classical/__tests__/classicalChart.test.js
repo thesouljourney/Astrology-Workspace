@@ -34,7 +34,7 @@ describe("Classical chart integration (verification case)", () => {
       directPerfectionSearchHorizonDays: 180,
       directPerfectionExactnessToleranceDegrees: 0.0003,
       signIngressConvention: "requires_historical_rule",
-      refranationConvention: "retrograde_prevents_perfection_within_horizon",
+      refranationConvention: "direct_to_retrograde_application_reversal",
     });
   });
 

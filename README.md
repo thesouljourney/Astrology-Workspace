@@ -1056,20 +1056,45 @@ transitions are detected from real recalculated future speed (never
 inferred from the current speed alone) and reported independently of
 any judgment about whether they prevent perfection.
 
-**Refranation** (cross-checked against Astrodienst's Astrowiki and
-astrologysoftware.com's dictionary, consistent with each other):
-occurs when an applying significator turns retrograde before the aspect
-perfects, and *as a direct result* the aspect never reaches exactitude.
-Critically, per both sources, refranation does **not** occur merely
-because a station happened — if the pair still goes on to complete the
-aspect (even after a station, even while retrograde), that is a delay,
-not refranation. This project therefore reports `refranation.occurs:
-true` only when both (a) a direct→retrograde station was detected, and
-(b) no exactitude was ever found within the search horizon. A planet
-that starts the search already retrograde and simply continues toward
-exactitude is never refranation (no station event occurs at all in that
-case) — confirmed by dedicated tests, including one proving a reversal
-*after* perfection cannot retroactively undo it.
+**Refranation** (cross-checked against Astrodienst's Astrowiki,
+astrologysoftware.com's dictionary, and a third independent summary —
+consistent with each other, no material disagreement found): occurs
+when an applying significator turns retrograde before the aspect
+perfects, and — as a **direct, local** consequence of that specific
+reversal — the application withdraws (the orb-from-exact starts
+increasing instead of decreasing). All three sources describe the
+triggering direction the same way ("turns retrograde," never the
+reverse); no source was found describing a retrograde→direct station as
+refranation, so only direct→retrograde is treated as historically
+qualifying — though the raw station detector records **both** transition
+directions with the same local before/after orb evidence, so a future
+phase could revisit this without new instrumentation if a source were
+found to disagree.
+
+**Refined definition — a local judgment about the moment of reversal,
+never defined by the search horizon.** An earlier version of this phase
+defined refranation as "a direct→retrograde station occurred AND no
+exactitude was found within the 180-day search horizon" — coupling a
+historical judgment to an unrelated software safety limit. This was
+corrected: refranation is now evaluated purely from evidence sampled
+just before and just after each station (`orbBeforeReversal`/
+`orbAfterReversal`, `applicationReversedAway`), entirely independent of
+whether the search later finds a crossing or how long the horizon is.
+Per all three sources, refranation still does **not** occur merely
+because a station happened — a station whose own before/after evidence
+shows the pair still closing in (e.g. a retrograde station that sends
+the planet back into contact) is not refranation, only a delay; a
+station occurring *after* the aspect has already perfected can never
+retroactively undo that perfection (confirmed by dedicated tests). A
+planet that starts the search already retrograde and simply continues
+toward exactitude is never refranation either (no station event occurs
+at all in that case). If an application refrains and, much later, a
+separate re-application happens to perfect (e.g. after the planet
+returns direct and a fresh approach develops), the original refranation
+record is **never erased** — `status` may read `"perfects"` (describing
+that later, distinct crossing) alongside a populated `refranation`
+object describing the earlier, interrupted one; Phase 3G-A does not
+attempt to fully classify that later event.
 
 **A genuine internal bug, caught and fixed before this phase was
 reported complete**: the signed error function used for root-finding
@@ -1098,23 +1123,26 @@ this module — those remain explicitly deferred to Phase 3G-B.
 the rules, not assumed in advance. None reached a clean, unqualified
 "perfects":
 
-| Pair | Aspect | Exactitude | Exact Time (UTC) | Ingress Before? | Refranation? | Status |
-|---|---|---|---|---|---|---|
-| Sun — Saturn | Square | Found | 1994-11-28 11:22:54 | Yes (Sun) | No | requires_historical_rule |
-| Moon — Venus | Trine | Found | 1994-11-21 09:31:59 | Yes (Moon) | No | requires_historical_rule |
-| Moon — Saturn | Trine | Found | 1994-11-21 15:57:54 | Yes (Moon) | No | requires_historical_rule |
-| Mars — Jupiter | Square | Not found | — | — | Yes (Mars) | does_not_perfect |
-| Jupiter — Saturn | Square | Not found | — | — | Yes (Jupiter) | does_not_perfect |
+| Pair | Aspect | Exactitude | Exact Time (UTC) | Ingress Before? | Refranation? | Orb Before → After | Status |
+|---|---|---|---|---|---|---|---|
+| Sun — Saturn | Square | Found | 1994-11-28 11:22:54 | Yes (Sun) | No | — | requires_historical_rule |
+| Moon — Venus | Trine | Found | 1994-11-21 09:31:59 | Yes (Moon) | No | — | requires_historical_rule |
+| Moon — Saturn | Trine | Found | 1994-11-21 15:57:54 | Yes (Moon) | No | — | requires_historical_rule |
+| Mars — Jupiter | Square | Not found | — | — | Yes (Mars, 1995-01-02) | 2°15′ → 2°39′ | does_not_perfect |
+| Jupiter — Saturn | Square | Not found | — | — | Yes (Jupiter, 1995-04-01) | 2°42′ → 2°56′ | does_not_perfect |
 
 Three pairs geometrically reach exact contact but with a sign ingress
 occurring first (deferred to the historical-rule convention above); two
-pairs never reach exactitude within the 180-day horizon because the
-faster-moving applying planet (Mars, then Jupiter) stations retrograde
-first — genuine refranation, found by the search, not targeted in
-advance.
+pairs exhibit genuine refranation — the faster-moving applying planet
+(Mars, then Jupiter) stations retrograde, and the local evidence
+confirms the orb-from-exact demonstrably increases immediately
+afterward (application withdrawing, not merely slowing) — found by the
+search, not targeted in advance, and independent of the 180-day
+horizon.
 
-Zero new dependencies, zero network calls. All 283 tests pass (251
-carried over from Phase 1–3F unchanged, plus 32 new Phase 3G-A tests).
+Zero new dependencies, zero network calls. All 289 tests pass (251
+carried over from Phase 1–3F unchanged, plus 38 Phase 3G-A tests
+reflecting this refinement).
 
 ---
 
