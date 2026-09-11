@@ -99,6 +99,38 @@ function formatSignedSpeed(speed) {
   return `${speed >= 0 ? "+" : ""}${speed.toFixed(4)}°/day`;
 }
 
+const DIRECT_PERFECTION_STATUS_LABEL = {
+  perfects: "Perfects｜成相",
+  does_not_perfect: "Does Not Perfect｜不成相",
+  requires_historical_rule: "Requires Historical Rule｜需历史惯例判定",
+  search_horizon_reached: "Search Horizon Reached｜搜索期限已达",
+  not_a_candidate: "Not a Candidate｜非候选",
+};
+
+function formatUTCTimestamp(iso) {
+  if (!iso) return "—";
+  return `${iso.replace("T", " ").replace("Z", "")} UTC`;
+}
+
+function formatDays(days) {
+  if (days === null || days === undefined) return "—";
+  return `${days.toFixed(2)} days｜天`;
+}
+
+function formatIngressEvents(events) {
+  if (events.length === 0) return "";
+  return events
+    .map((e) => `${planetLabel(e.planet)} ${e.fromSign}→${e.toSign} @ ${formatUTCTimestamp(e.timestamp)}`)
+    .join("; ");
+}
+
+function formatMotionEvents(events) {
+  if (events.length === 0) return "";
+  return events
+    .map((e) => `${planetLabel(e.planet)} ${e.fromMotion}→${e.toMotion} @ ${formatUTCTimestamp(e.timestamp)}`)
+    .join("; ");
+}
+
 const TERMINATION_TYPE_LABEL = {
   self_dispositor: "Self-Dispositor｜自主行星",
   loop: "Loop｜循环",
@@ -730,6 +762,69 @@ export default function ClassicalAstrology({ chart }) {
                     </tr>
                   </tbody>
                 </table>
+
+                {a.motion.status === "applying" &&
+                  (() => {
+                    const dp = classical.directPerfection.find(
+                      (d) => d.planetA === a.planetA && d.planetB === a.planetB,
+                    );
+                    if (!dp || !dp.isCandidate) return null;
+                    return (
+                      <>
+                        <h4>Direct Perfection｜直接成相</h4>
+                        <table className="detail-table">
+                          <tbody>
+                            <tr>
+                              <td>Current Status｜当前状态</td>
+                              <td>{MOTION_STATUS_LABEL[a.motion.status]}</td>
+                            </tr>
+                            <tr>
+                              <td>Exactitude｜是否成正相</td>
+                              <td>{dp.exactitudeFound ? "Found｜是" : "Not Found｜否"}</td>
+                            </tr>
+                            <tr>
+                              <td>Exact Time (UTC)｜正相时间</td>
+                              <td>{formatUTCTimestamp(dp.exactitudeTimestampUTC)}</td>
+                            </tr>
+                            <tr>
+                              <td>Time to Exact｜距正相时间</td>
+                              <td>{formatDays(dp.timeToExactitudeDays)}</td>
+                            </tr>
+                            <tr>
+                              <td>Ingress Before Exact｜正相前是否换座</td>
+                              <td>
+                                {dp.ingressBeforeExactitude.planetA || dp.ingressBeforeExactitude.planetB ? "Yes｜是" : "No｜否"}
+                                {dp.ingressBeforeExactitude.events.length > 0 &&
+                                  ` — ${formatIngressEvents(dp.ingressBeforeExactitude.events)}`}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Motion Change Before Exact｜正相前是否顺逆转变</td>
+                              <td>
+                                {dp.motionChangeBeforeExactitude.planetA || dp.motionChangeBeforeExactitude.planetB
+                                  ? "Yes｜是"
+                                  : "No｜否"}
+                                {dp.motionChangeBeforeExactitude.events.length > 0 &&
+                                  ` — ${formatMotionEvents(dp.motionChangeBeforeExactitude.events)}`}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Refranation｜反相</td>
+                              <td>
+                                {dp.refranation.occurs
+                                  ? `Yes｜是 — ${planetLabel(dp.refranation.planet)} @ ${formatUTCTimestamp(dp.refranation.timestamp)}`
+                                  : "No｜否"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Technical Result｜技术性结果</td>
+                              <td>{DIRECT_PERFECTION_STATUS_LABEL[dp.status]}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </>
+                    );
+                  })()}
               </details>
             ))}
           </>

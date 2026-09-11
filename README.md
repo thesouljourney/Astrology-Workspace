@@ -977,6 +977,147 @@ for a future phase.
 
 ---
 
+## 16. Phase 3G-A: Direct Perfection & Future Motion Validation
+
+Phase 3F answers "is this aspect applying **right now**?" from a tiny
+(0.01-day) forward probe that captures only the instantaneous local
+trend. Phase 3G-A answers a genuinely different question: **does that
+applying aspect actually reach exact geometric contact in the future**,
+before a station or retrogradation prevents it? This absolutely requires
+recalculating real future planetary positions — the Phase 3F probe is
+explicitly not sufficient for it, and this phase never extrapolates from
+a constant current speed. Adds `chart.classical.directPerfection`, one
+entry per Phase 3F pair (21 total; only the 5 Phase 3F found "applying"
+run a real search — the other 16 get an immediate, cheap non-candidate
+result, per the project brief's performance requirement).
+
+**Future positions**: recalculated via `computeLongitudeAndSpeed()`
+(exported from the locked `planets.js`, reused verbatim — the exact same
+method Phase 1 uses) — no competing longitude calculation, no new
+production dependency, no network access.
+
+**Event-search algorithm**: a coarse forward scan (`COARSE_STEP_DAYS =
+0.25`, chosen conservatively against the Moon's ~13-15°/day maximum
+motion) tracks the signed angular error to the currently-applying exact
+aspect angle. When the scan detects a plausible sign change — filtered
+to exclude the representation's own wraparound artifact at the point
+exactly opposite the target (see "A genuine internal bug," below) — it
+refines the crossing via deterministic bisection to
+`DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES` (reused directly from Phase
+3F's `EXACT_EPSILON_DEGREES`, ~1 arcsecond). The same coarse scan also
+detects sign ingresses (30° boundary crossings) and station events
+(speed sign changes) for both planets, each independently refined via
+fixed-iteration bisection to sub-minute timestamp precision. The search
+always locks onto the SAME physical aspect configuration Phase 3F
+identified as applying — it never re-selects a different, later,
+geometrically-closer aspect (an aspect other than conjunction/opposition
+has two raw-longitude-difference mirrors, e.g. a trine shows up as a
+120° or a 240° raw difference; which mirror the pair is actually on is
+resolved once, at the start of the search, and held fixed throughout).
+
+**Search horizon**: `DIRECT_PERFECTION_SEARCH_HORIZON_DAYS = 180` — an
+explicit **software safety limit**, not a historical astrology doctrine
+(kept as a separate metadata field for exactly this reason). 180 days is
+generous enough to resolve even a slow Jupiter/Saturn-type applying
+aspect through a full retrograde station and return to direct motion (a
+typical outer-planet synodic retrograde loop runs roughly 100-150 days)
+while remaining bounded rather than open-ended.
+
+**Three distinct tolerances, not conflated**: the Lilly aspect orb
+(Phase 3F, degrees-wide, decides whether an aspect exists at all) is
+untouched by this phase; the root-finding tolerance
+(`DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES`, ~1 arcsecond) decides when
+a search has converged; resulting timestamp precision is a *derived*
+quantity from that angular tolerance and the local relative angular
+speed (typically sub-minute), not a separately chosen time value.
+
+**Sign-ingress convention — a genuine sourced disagreement, resolved by
+explicit decision, not silently**: research (Skyscript forum threads on
+"Moon's last aspect" and "changing signs before conjunction") found
+reputable traditional authors materially disagree on whether a sign
+change by either applying planet, before exact contact, prevents
+perfection — Ivy Goldstein-Jacobson requires perfection before the sign
+changes; March-McEvers says it doesn't matter; Lilly's own position (per
+Skyscript's summary) is nuanced, counting the *application* as formed
+within the original sign while perfection itself can still occur after
+leaving it, with a separately-named exception ("evasion") specifically
+when the *slower* planet leaves its sign before the faster one catches
+up. This was reported to the project owner rather than resolved
+unilaterally; **the owner chose to defer rather than pick a side**: when
+a sign ingress is detected before geometric exactitude, `status` is
+`"requires_historical_rule"`, not a forced perfects/does_not_perfect
+judgment (`chart.classical.meta.signIngressConvention:
+"requires_historical_rule"`). The raw ingress events (planet, from/to
+sign, timestamp) are always reported regardless — raw event first,
+judgment second, per the project brief.
+
+**Station/motion-change detection**: both planets' direct↔retrograde
+transitions are detected from real recalculated future speed (never
+inferred from the current speed alone) and reported independently of
+any judgment about whether they prevent perfection.
+
+**Refranation** (cross-checked against Astrodienst's Astrowiki and
+astrologysoftware.com's dictionary, consistent with each other):
+occurs when an applying significator turns retrograde before the aspect
+perfects, and *as a direct result* the aspect never reaches exactitude.
+Critically, per both sources, refranation does **not** occur merely
+because a station happened — if the pair still goes on to complete the
+aspect (even after a station, even while retrograde), that is a delay,
+not refranation. This project therefore reports `refranation.occurs:
+true` only when both (a) a direct→retrograde station was detected, and
+(b) no exactitude was ever found within the search horizon. A planet
+that starts the search already retrograde and simply continues toward
+exactitude is never refranation (no station event occurs at all in that
+case) — confirmed by dedicated tests, including one proving a reversal
+*after* perfection cannot retroactively undo it.
+
+**A genuine internal bug, caught and fixed before this phase was
+reported complete**: the signed error function used for root-finding
+wraps into (-180°, 180°], which means the representation itself flips
+sign at the point exactly opposite the target — a wraparound artifact,
+not a real aspect crossing. An early version of the search treated any
+sign flip as a candidate crossing, which caused it to converge on this
+artifact instead of the genuine future crossing for several real pairs
+in the verification chart (caught via a deliberately long-horizon
+regression test, `TEST 20b`, that verifies a known periodic case
+resolves to its true crossing rather than the spurious antipodal one).
+Fixed by (1) rejecting sign flips whose raw jump size looks like a
+wraparound (≈360°) rather than continuous local motion, and (2)
+independently verifying the bisection result actually converged near
+zero before accepting it as a genuine crossing.
+
+**"perfects" means only** that the two planets geometrically reach the
+exact currently-applying classical aspect under the conventions above —
+never a claim about outcome, success, or guarantee. No score, and no
+Translation of Light / Collection of Light / Prohibition / Frustration /
+Abscission / Void of Course / final horary judgment exists anywhere in
+this module — those remain explicitly deferred to Phase 3G-B.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus) — all 5 applying pairs evaluated, computed from
+the rules, not assumed in advance. None reached a clean, unqualified
+"perfects":
+
+| Pair | Aspect | Exactitude | Exact Time (UTC) | Ingress Before? | Refranation? | Status |
+|---|---|---|---|---|---|---|
+| Sun — Saturn | Square | Found | 1994-11-28 11:22:54 | Yes (Sun) | No | requires_historical_rule |
+| Moon — Venus | Trine | Found | 1994-11-21 09:31:59 | Yes (Moon) | No | requires_historical_rule |
+| Moon — Saturn | Trine | Found | 1994-11-21 15:57:54 | Yes (Moon) | No | requires_historical_rule |
+| Mars — Jupiter | Square | Not found | — | — | Yes (Mars) | does_not_perfect |
+| Jupiter — Saturn | Square | Not found | — | — | Yes (Jupiter) | does_not_perfect |
+
+Three pairs geometrically reach exact contact but with a sign ingress
+occurring first (deferred to the historical-rule convention above); two
+pairs never reach exactitude within the 180-day horizon because the
+faster-moving applying planet (Mars, then Jupiter) stations retrograde
+first — genuine refranation, found by the search, not targeted in
+advance.
+
+Zero new dependencies, zero network calls. All 283 tests pass (251
+carried over from Phase 1–3F unchanged, plus 32 new Phase 3G-A tests).
+
+---
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```

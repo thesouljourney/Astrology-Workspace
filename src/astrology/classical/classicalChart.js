@@ -15,6 +15,11 @@ import { computeSectConditionDetail } from "./hayzHalb.js";
 import { computeDispositorChain, buildImmediateDispositor } from "./dispositorChain.js";
 import { computeReceptionMatrix, getReceptionForPlanet, computeMutualReceptions } from "./reception.js";
 import { computeAspectMatrix, EXACT_EPSILON_DEGREES } from "./aspects.js";
+import {
+  computeDirectPerfection,
+  DIRECT_PERFECTION_SEARCH_HORIZON_DAYS,
+  DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES,
+} from "./directPerfection.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -63,6 +68,36 @@ export const CLASSICAL_META = {
   // Researched but deferred: the dexter/sinister distinction was judged
   // not unambiguous enough for a confident first implementation.
   dexterSinisterStatus: "deferred",
+  // Phase 3G-A: does an applying aspect (Phase 3F) actually reach exact
+  // geometric contact in the future? Future positions are genuinely
+  // recalculated via astronomy-engine (never extrapolated from a
+  // constant current speed) — see directPerfection.js.
+  directPerfectionMethod: "future_ephemeris_event_search",
+  directPerfectionEngine: "astronomy-engine",
+  // A software safety limit (engineering choice), NOT a historical
+  // astrology doctrine — kept deliberately separate from the
+  // conventions above; see directPerfection.js for the reasoning.
+  directPerfectionSearchHorizonDays: DIRECT_PERFECTION_SEARCH_HORIZON_DAYS,
+  // Reused directly from Phase 3F's EXACT_EPSILON_DEGREES for
+  // consistency — distinct from the Lilly aspect orb (Phase 3F) and
+  // from timestamp precision (a derived quantity, not a separate
+  // chosen value); see directPerfection.js.
+  directPerfectionExactnessToleranceDegrees: DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES,
+  // A genuine sourced disagreement (Goldstein-Jacobson requires
+  // perfection before sign change; March-McEvers does not; Lilly's own
+  // position is nuanced, with a separate "evasion" exception) was
+  // reported to the project owner, who chose to defer rather than pick
+  // a side: when a sign ingress is detected before geometric
+  // exactitude, status is "requires_historical_rule", not a forced
+  // perfects/does_not_perfect judgment. See directPerfection.js and
+  // README.
+  signIngressConvention: "requires_historical_rule",
+  // Refranation (an applying significator turning retrograde before the
+  // aspect can perfect, such that it never reaches exactitude) follows
+  // the definition corroborated by Astrodienst's Astrowiki and
+  // astrologysoftware.com's dictionary — NOT merely "any retrograde
+  // event." See directPerfection.js.
+  refranationConvention: "retrograde_prevents_perfection_within_horizon",
 };
 
 /**
@@ -112,6 +147,13 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
       },
     };
   });
+
+  // Phase 3G-A: future-motion validation for every Phase 3F pair. Only
+  // pairs Phase 3F found "applying" run the real event search; all
+  // others get an immediate, cheap non-candidate result (Part M) —
+  // Phase 3F's own aspect/motion data is read-only input here, never
+  // recalculated or altered.
+  const directPerfection = aspects.map((pair) => computeDirectPerfection({ aspectPair: pair, startAstroTime: astroTime }));
 
   const planets = TRADITIONAL_PLANETS.map((key) => {
     const p = chart.planets.find((pl) => pl.key === key);
@@ -175,5 +217,6 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
     receptionMatrix,
     mutualReceptions,
     aspects,
+    directPerfection,
   };
 }

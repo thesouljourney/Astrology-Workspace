@@ -48,8 +48,13 @@ function geocentricEclipticLongitude(body, astroTime) {
 /**
  * Computes ecliptic longitude and longitudinal speed (deg/day) for a body,
  * via symmetric central difference. Speed < 0 means retrograde motion.
+ *
+ * Exported so other modules (e.g. classical/directPerfection.js, Phase
+ * 3G-A) can recalculate a single body's real position/speed at an
+ * arbitrary future AstroTime using this exact same method, rather than
+ * building a second, competing longitude calculation.
  */
-function computeLongitudeAndSpeed(body, astroTime) {
+export function computeLongitudeAndSpeed(body, astroTime) {
   const longitude = geocentricEclipticLongitude(body, astroTime);
 
   const before = geocentricEclipticLongitude(body, astroTime.AddDays(-SPEED_HALF_WINDOW_DAYS));

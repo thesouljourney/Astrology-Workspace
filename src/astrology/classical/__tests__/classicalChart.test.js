@@ -29,6 +29,12 @@ describe("Classical chart integration (verification case)", () => {
       aspectExactnessToleranceDegrees: 0.0003,
       signAspectDoctrine: "whole_sign_separate_fact",
       dexterSinisterStatus: "deferred",
+      directPerfectionMethod: "future_ephemeris_event_search",
+      directPerfectionEngine: "astronomy-engine",
+      directPerfectionSearchHorizonDays: 180,
+      directPerfectionExactnessToleranceDegrees: 0.0003,
+      signIngressConvention: "requires_historical_rule",
+      refranationConvention: "retrograde_prevents_perfection_within_horizon",
     });
   });
 
