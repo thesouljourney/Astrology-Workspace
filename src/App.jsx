@@ -1,0 +1,216 @@
+import { useState } from "react";
+import { calculateChart } from "./astrology/ephemeris.js";
+import { formatDMS } from "./utils/formatDegree.js";
+import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
+import "./App.css";
+
+const DEFAULT_INPUT = {
+  birthDate: "1994-11-21",
+  birthTime: "01:44:00",
+  latitude: "1.8548",
+  longitude: "102.9325",
+  utcOffset: "+08:00",
+  houseSystem: "placidus",
+};
+
+function App() {
+  const [input, setInput] = useState(DEFAULT_INPUT);
+  const [chart, setChart] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleChange = (field) => (e) => {
+    setInput((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleCalculate = () => {
+    setError(null);
+    setChart(null);
+    try {
+      const result = calculateChart(input);
+      setChart(result);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="workspace">
+      <header>
+        <h1>Personal Astrology Workspace</h1>
+        <p className="subtitle">Calculation Prototype</p>
+      </header>
+
+      <section className="form">
+        <div className="field">
+          <label htmlFor="birthDate">Birth Date</label>
+          <input
+            id="birthDate"
+            type="text"
+            placeholder="YYYY-MM-DD"
+            value={input.birthDate}
+            onChange={handleChange("birthDate")}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="birthTime">Birth Time</label>
+          <input
+            id="birthTime"
+            type="text"
+            placeholder="HH:MM:SS"
+            value={input.birthTime}
+            onChange={handleChange("birthTime")}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="latitude">Latitude</label>
+          <input
+            id="latitude"
+            type="text"
+            placeholder="-90 to 90"
+            value={input.latitude}
+            onChange={handleChange("latitude")}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="longitude">Longitude</label>
+          <input
+            id="longitude"
+            type="text"
+            placeholder="-180 to 180"
+            value={input.longitude}
+            onChange={handleChange("longitude")}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="utcOffset">UTC Offset</label>
+          <input
+            id="utcOffset"
+            type="text"
+            placeholder="+08:00"
+            value={input.utcOffset}
+            onChange={handleChange("utcOffset")}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="houseSystem">House System</label>
+          <select id="houseSystem" value={input.houseSystem} onChange={handleChange("houseSystem")}>
+            {SUPPORTED_HOUSE_SYSTEMS.map((sys) => (
+              <option key={sys} value={sys}>
+                {sys[0].toUpperCase() + sys.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button type="button" className="calculate-btn" onClick={handleCalculate}>
+          Calculate Chart
+        </button>
+      </section>
+
+      {error && <div className="error-box">{error}</div>}
+
+      {chart && (
+        <section className="results">
+          <div className="meta">
+            <div>UTC: {chart.meta.utcIso}</div>
+            <div>Julian Day: {chart.meta.julianDay.toFixed(6)}</div>
+            <div>House System: {chart.meta.houseSystem}</div>
+          </div>
+
+          <h2>Planets</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Body</th>
+                <th>Sign</th>
+                <th>Degree</th>
+                <th>House</th>
+                <th>Motion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chart.planets.map((p) => (
+                <tr key={p.key}>
+                  <td>
+                    {p.english}｜{p.chinese}
+                  </td>
+                  <td>
+                    {p.sign.symbol} {p.sign.english}｜{p.sign.chinese}
+                  </td>
+                  <td>{formatDMS(p.degreeInSign)}</td>
+                  <td>{p.house}</td>
+                  <td className={p.retrograde ? "retrograde" : "direct"}>
+                    {p.retrograde ? "Retrograde" : "Direct"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h2>Angles</h2>
+          <table>
+            <tbody>
+              <tr>
+                <td>ASC｜上升</td>
+                <td>
+                  {chart.angles.asc.sign.symbol} {chart.angles.asc.sign.english}｜{chart.angles.asc.sign.chinese}
+                </td>
+                <td>{formatDMS(chart.angles.asc.degreeInSign)}</td>
+              </tr>
+              <tr>
+                <td>MC｜天顶</td>
+                <td>
+                  {chart.angles.mc.sign.symbol} {chart.angles.mc.sign.english}｜{chart.angles.mc.sign.chinese}
+                </td>
+                <td>{formatDMS(chart.angles.mc.degreeInSign)}</td>
+              </tr>
+              <tr>
+                <td>IC｜天底</td>
+                <td>
+                  {chart.angles.ic.sign.symbol} {chart.angles.ic.sign.english}｜{chart.angles.ic.sign.chinese}
+                </td>
+                <td>{formatDMS(chart.angles.ic.degreeInSign)}</td>
+              </tr>
+              <tr>
+                <td>DESC｜下降</td>
+                <td>
+                  {chart.angles.desc.sign.symbol} {chart.angles.desc.sign.english}｜{chart.angles.desc.sign.chinese}
+                </td>
+                <td>{formatDMS(chart.angles.desc.degreeInSign)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>House Cusps</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>House</th>
+                <th>Sign</th>
+                <th>Degree</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chart.houseCusps.map((c) => (
+                <tr key={c.house}>
+                  <td>House {c.house}</td>
+                  <td>
+                    {c.sign.symbol} {c.sign.english}｜{c.sign.chinese}
+                  </td>
+                  <td>{formatDMS(c.degreeInSign)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </div>
+  );
+}
+
+export default App;
