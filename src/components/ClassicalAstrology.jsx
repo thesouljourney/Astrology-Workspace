@@ -95,6 +95,11 @@ const MOTION_STATUS_LABEL = {
   exact: "Exact｜正相",
 };
 
+const PERFECTION_TECHNICAL_STATUS_LABEL = {
+  detected: "Detected｜检测到",
+  requires_historical_rule: "Requires Historical Rule｜需历史惯例判定",
+};
+
 function formatSignedSpeed(speed) {
   return `${speed >= 0 ? "+" : ""}${speed.toFixed(4)}°/day`;
 }
@@ -830,6 +835,155 @@ export default function ClassicalAstrology({ chart }) {
           </>
         );
       })()}
+
+      <h3>Perfection Mechanics｜成相机制</h3>
+      <p className="reception-note">
+        Event sequence facts only — not a final Horary outcome and not scored｜仅为事件顺序的技术性事实 — 非最终占星判断，亦不评分
+      </p>
+
+      <h4>Translation of Light｜传光</h4>
+      {classical.perfectionMechanics.translations.length === 0 ? (
+        <p>None detected under the selected convention.｜在当前惯例下未检测到传光。</p>
+      ) : (
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>Translator｜传光者</th>
+              <th>Separates From｜出相于</th>
+              <th>Applies To｜入相于</th>
+              <th>Separation Exact｜出相正相时刻</th>
+              <th>Application Exact｜入相正相时刻</th>
+              <th>Technical Status｜技术性状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classical.perfectionMechanics.translations.map((t, i) => (
+              <tr key={`translation-${i}`}>
+                <td>{planetLabel(t.translator)}</td>
+                <td>
+                  {planetLabel(t.fromPlanet)} ({ASPECT_TYPE_LABEL[t.separatedAspect]})
+                </td>
+                <td>
+                  {planetLabel(t.toPlanet)} ({ASPECT_TYPE_LABEL[t.applyingAspect]})
+                </td>
+                <td>{formatUTCTimestamp(t.separationExactitudeTime)}</td>
+                <td>{formatUTCTimestamp(t.applicationExactitudeTime)}</td>
+                <td>{PERFECTION_TECHNICAL_STATUS_LABEL[t.technicalStatus]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h4>Collection of Light｜聚光</h4>
+      {classical.perfectionMechanics.collections.length === 0 ? (
+        <p>None detected under the selected convention.｜在当前惯例下未检测到聚光。</p>
+      ) : (
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>Collector｜聚光者</th>
+              <th>Planet A｜行星A</th>
+              <th>Planet B｜行星B</th>
+              <th>A Exact｜A正相时刻</th>
+              <th>B Exact｜B正相时刻</th>
+              <th>Technical Status｜技术性状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classical.perfectionMechanics.collections.map((c, i) => (
+              <tr key={`collection-${i}`}>
+                <td>{planetLabel(c.collector)}</td>
+                <td>
+                  {planetLabel(c.planetA)} ({ASPECT_TYPE_LABEL[c.aToCollectorAspect]})
+                </td>
+                <td>
+                  {planetLabel(c.planetB)} ({ASPECT_TYPE_LABEL[c.bToCollectorAspect]})
+                </td>
+                <td>{formatUTCTimestamp(c.aExactitudeTime)}</td>
+                <td>{formatUTCTimestamp(c.bExactitudeTime)}</td>
+                <td>{PERFECTION_TECHNICAL_STATUS_LABEL[c.technicalStatus]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h4>Prohibition｜阻碍</h4>
+      <p className="reception-note">
+        William Lilly, Christian Astrology: a third planet interposes before the original pair's own perfection｜威廉·礼利《基督教占星学》：第三行星在原配对自身成相前介入
+      </p>
+      {classical.perfectionMechanics.prohibitions.length === 0 ? (
+        <p>None detected under the selected convention.｜在当前惯例下未检测到阻碍。</p>
+      ) : (
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>Original Pair｜原配对</th>
+              <th>Prohibiting Planet｜介入行星</th>
+              <th>Intervening Aspect｜介入相位</th>
+              <th>Intervening Exact｜介入正相时刻</th>
+              <th>Original Expected Exact｜原配对预期正相时刻</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classical.perfectionMechanics.prohibitions.map((p, i) => (
+              <tr key={`prohibition-${i}`}>
+                <td>
+                  {planetLabel(p.originalPair[0])} — {planetLabel(p.originalPair[1])} ({ASPECT_TYPE_LABEL[p.originalAspect]})
+                </td>
+                <td>{planetLabel(p.prohibitingPlanet)}</td>
+                <td>{ASPECT_TYPE_LABEL[p.interveningAspect]}</td>
+                <td>{formatUTCTimestamp(p.interveningExactitudeTime)}</td>
+                <td>{formatUTCTimestamp(p.originalExpectedExactitudeTime)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h4>Frustration｜挫败</h4>
+      <p className="reception-note">
+        Deferred as a distinct doctrine｜作为独立学说被推迟：sourced definitions materially disagree (a significator/non-significator
+        role distinction vs. a synonym of Prohibition/Abscission) and this phase does not assign house-significator roles. The
+        underlying facts remain visible via Prohibition and the raw Interference Events below. See README.｜相关来源存在实质分歧
+        （要求区分"代表者/非代表者"角色，或与阻碍/切断视为同义），且本阶段不指派宫位代表角色。相关事实仍可见于上方"阻碍"与下方"干预事件"。详见
+        README。
+      </p>
+
+      <h4>Interference Events｜干预事件（原始层）</h4>
+      <p className="reception-note">
+        Raw third-planet contact facts, independent of any doctrine label (includes every Prohibition above, plus any
+        unresolved "abscission"-type contact)｜原始的第三行星接触事实，独立于任何学说标签（包含上方所有"阻碍"，以及任何尚未定名的"切断"类接触）
+      </p>
+      {classical.perfectionMechanics.interferenceEvents.length === 0 ? (
+        <p>None detected under the selected convention.｜在当前惯例下未检测到干预事件。</p>
+      ) : (
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>Original Pair｜原配对</th>
+              <th>Contacted Planet｜被接触行星</th>
+              <th>Third Planet｜第三行星</th>
+              <th>Aspect｜相位</th>
+              <th>Exact Time｜正相时刻</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classical.perfectionMechanics.interferenceEvents.map((e, i) => (
+              <tr key={`interference-${i}`}>
+                <td>
+                  {planetLabel(e.originalPair[0])} — {planetLabel(e.originalPair[1])}
+                </td>
+                <td>{planetLabel(e.contactedPlanet)}</td>
+                <td>{planetLabel(e.thirdPlanet)}</td>
+                <td>{ASPECT_TYPE_LABEL[e.aspectType]}</td>
+                <td>{formatUTCTimestamp(e.exactitudeTimestampUTC)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <h3>Planet Detail｜行星详情</h3>
       {classical.planets.map((p) => (

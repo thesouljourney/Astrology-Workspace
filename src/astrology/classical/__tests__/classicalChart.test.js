@@ -35,6 +35,11 @@ describe("Classical chart integration (verification case)", () => {
       directPerfectionExactnessToleranceDegrees: 0.0003,
       signIngressConvention: "requires_historical_rule",
       refranationConvention: "direct_to_retrograde_application_reversal",
+      translationConvention: "faster_planet_separates_and_applies_no_direct_aspect_required_reception_informational",
+      collectionConvention: "slower_planet_receives_both_applications_no_direct_aspect_required_reception_informational",
+      prohibitionConvention: "lilly_third_planet_interposes_before_perfection",
+      frustrationConvention: "deferred_due_to_historical_variance",
+      interferenceLayer: "raw_event_sequence",
     });
   });
 

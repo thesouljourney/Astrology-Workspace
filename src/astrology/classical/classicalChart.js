@@ -21,6 +21,7 @@ import {
   DIRECT_PERFECTION_ROOT_TOLERANCE_DEGREES,
   REFRANATION_CONVENTION,
 } from "./directPerfection.js";
+import { computePerfectionMechanics, DOCTRINE_STATUS } from "./perfectionMechanics.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -104,6 +105,11 @@ export const CLASSICAL_META = {
   // — NOT merely "any retrograde event," and NOT "no exactitude found
   // within the search horizon." See directPerfection.js.
   refranationConvention: REFRANATION_CONVENTION,
+  // Phase 3G-B: Translation/Collection of Light, Prohibition (Lilly),
+  // and a neutral raw third-planet interference layer, built purely
+  // from already-computed Phase 3E/3F/3G-A data. Frustration is
+  // deliberately deferred — see perfectionMechanics.js.
+  ...DOCTRINE_STATUS,
 };
 
 /**
@@ -160,6 +166,17 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
   // Phase 3F's own aspect/motion data is read-only input here, never
   // recalculated or altered.
   const directPerfection = aspects.map((pair) => computeDirectPerfection({ aspectPair: pair, startAstroTime: astroTime }));
+
+  // Phase 3G-B: event-sequence mechanics (Translation/Collection of
+  // Light, Prohibition, raw interference) built entirely on top of the
+  // already-computed reception/aspect/direct-perfection data above.
+  const perfectionMechanics = computePerfectionMechanics({
+    placements,
+    aspects,
+    directPerfection,
+    receptionMatrix,
+    startAstroTime: astroTime,
+  });
 
   const planets = TRADITIONAL_PLANETS.map((key) => {
     const p = chart.planets.find((pl) => pl.key === key);
@@ -224,5 +241,6 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
     mutualReceptions,
     aspects,
     directPerfection,
+    perfectionMechanics,
   };
 }

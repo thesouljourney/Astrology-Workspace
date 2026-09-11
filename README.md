@@ -1144,6 +1144,140 @@ Zero new dependencies, zero network calls. All 289 tests pass (251
 carried over from Phase 1–3F unchanged, plus 38 Phase 3G-A tests
 reflecting this refinement).
 
+## 17. Phase 3G-B: Perfection Interference Mechanics
+
+Phase 3G-A answers "do A and B reach exactitude?" Phase 3G-B answers a
+different question: **what happens before that exactitude?** — Translation
+of Light, Collection of Light, Prohibition, and a neutral raw
+third-planet interference layer. Adds `chart.classical.perfectionMechanics
+= { translations, collections, prohibitions, frustrations, interferenceEvents,
+eventTimeline, doctrineStatus }`. This is **not** final Horary judgment:
+no yes/no/success/failure outcome and no score exist anywhere in this
+module, and none of Void of Course Moon or house-significator
+(querent/quesited) role assignment is implemented here.
+
+**Zero new astronomical calculation, one reuse.** Every structure in
+this module is built purely by comparing/aggregating already-computed
+Phase 3E (`receptionMatrix`), Phase 3F (`aspects`), and Phase 3G-A
+(`directPerfection`) data — read-only. The one exception is Translation's
+"separation" leg, which needs a *past* exactitude timestamp: found by
+calling Phase 3G-A's own `scanForAspectEvents` with time parameterized
+backward (negating the day offset passed to each planet's state
+function) — the exact same deterministic forward-search/bisection
+machinery, not a second competing engine and not constant-speed
+extrapolation.
+
+**Translation of Light** (cross-checked against Skyscript forum threads,
+astrologysoftware.com's dictionary, Astrocepheus's knowledge base, and
+Kerykeion's summary — consistent on the core structure): a third planet
+C, faster (by absolute angular speed) than both A and B, separates from
+an aspect with one of them and applies to an aspect with the other,
+carrying "light" between two planets that do **not** currently aspect
+each other directly. Translation and Collection are specifically the
+mechanism used when the two significators themselves must not aspect
+each other — so both require `aspect.type === null` on the A–B pair as a
+precondition. Reception is **not** a hard gate: sources disagree on
+whether it is required ("translation and collection can occur without
+reception, [though] reception helps to secure it... some astrologers do
+not even consider receptions") — resolved the same way Phase 3E resolved
+its own reception-qualification question: `receptionContext` is exposed
+as informational data, never required for `occurs: true`. No source was
+found restricting either leg to a subset of the five classical aspects,
+so all five are accepted.
+
+**Collection of Light** (same sources as above): a third planet C,
+**slower** than both A and B, receives applying aspects from both —
+"collecting" their light. Same no-direct-aspect precondition and same
+reception-as-metadata resolution, for the same sourced reason. A leg
+that never reaches exactitude (e.g. a refranating pair) is reported with
+that leg's exactitude time as `null` rather than excluding the whole
+candidate — an empty/null value here means "not (yet) found under this
+search," never "historically impossible."
+
+**Prohibition** — William Lilly, *Christian Astrology* (a single, clear,
+internally consistent, role-free definition; no material disagreement
+found strong enough to warrant a stop): *"Prohibition is when two
+Planets that signify the effecting or bringing to conclusion anything
+demanded, are applying to an Aspect; and before they can come to a true
+Aspect, another Planet interposes either his body or aspect, to that
+thereby the matter propounded is hindered or retarded."* Read here
+without any house-role assignment: "the two planets that signify the
+matter" is simply any currently-applying Phase 3F pair with a found
+Phase 3G-A exactitude. A third planet C prohibits when C reaches its own
+exactitude with either A or B strictly *before* A–B's own exactitude —
+proven from real future-ephemeris timestamps already computed by Phase
+3G-A, never inferred from static current geometry. Lilly's own wording
+says the matter is "hindered or retarded," not necessarily destroyed —
+this module reports the structural fact only, no outcome claim.
+
+**Frustration — deferred as a distinct doctrine, by explicit decision of
+the project owner, not a silent omission.** At least one source defines
+Frustration as requiring a distinction between a "significator" (the
+planet representing the matter) and a "non-significator" — a role
+assignment this phase is explicitly forbidden from performing (no
+querent/quesited/house-role assignment in this phase). Multiple other
+sources instead state that "many writers consider abscission and
+frustration synonymous" with the very structure already implemented
+above as Prohibition. Rather than silently collapsing Frustration into
+Prohibition under a different name, or silently assigning roles this
+phase should not assign, this disagreement was reported to the project
+owner, who chose to defer: `frustrations` is always `[]`, and
+`chart.classical.meta.frustrationConvention:
+"deferred_due_to_historical_variance"`. The underlying facts remain
+fully visible via Prohibition and the raw interference layer below —
+nothing about Frustration is hidden, only its own distinct label is
+withheld.
+
+**Abscission / raw interference layer** — resolved the way the project
+brief itself preferred for exactly this kind of overlapping terminology:
+rather than deciding whether "abscission" is a synonym of Prohibition, a
+distinct doctrine, or a broader family, this module exposes a neutral
+**raw** interference-event layer (`interferenceEvents`): every
+third-planet exact aspect involving either member of a currently-applying
+pair that occurs *before* that pair's own candidate exactitude, reported
+as plain structural fact, independent of any doctrine label.
+`prohibitions` entries are **derived** from this same raw layer under
+Lilly's specific historical rule; the raw layer itself makes no doctrine
+claim, so it is required regardless of how any future phase eventually
+settles the abscission/prohibition/frustration naming question.
+
+**Sign ingress**: reuses Phase 3G-A's already-deferred
+`signIngressConvention: "requires_historical_rule"` verbatim — if a
+constituent leg of a Translation/Collection candidate itself shows a sign
+ingress before its own exactitude, that structure's `technicalStatus` is
+likewise set to `"requires_historical_rule"` rather than silently
+asserting the doctrine held or failed.
+
+**Event timeline**: `eventTimeline` aggregates every candidate's own
+exactitude, every sign ingress, and every station event from Phase
+3G-A's already-computed results into one deduplicated, chronologically
+sorted list — again, no new calculation, only aggregation of data that
+already existed.
+
+New `chart.classical.meta` fields: `translationConvention`,
+`collectionConvention`, `prohibitionConvention`, `frustrationConvention:
+"deferred_due_to_historical_variance"`, `interferenceLayer:
+"raw_event_sequence"`.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus) — computed from the rules, nothing pre-assumed:
+
+| Doctrine | Count | Detail |
+|---|---|---|
+| Translation of Light | 3 | Moon separates Mars(sextile)/applies Venus(trine); Sun separates Mars(square)/applies Saturn(square); Moon separates Mars(sextile)/applies Saturn(trine) — all three `requires_historical_rule` (ingress before the applying leg's exactitude, consistent with Phase 3G-A's own findings for these same pairs) |
+| Collection of Light | 2 | Saturn collects Sun(square) + Moon(trine); Saturn collects Moon(trine) + Jupiter(square) — the Jupiter leg's exactitude is `null` (Jupiter–Saturn refranates, per Phase 3G-A) |
+| Prohibition | 2 | Moon's trine to Saturn (1994-11-21 15:57:54 UTC) prohibits Sun–Saturn's own square (1994-11-28 11:22:54 UTC); Venus's trine to Moon (1994-11-21 09:31:59 UTC) prohibits Moon–Saturn's own trine (1994-11-21 15:57:54 UTC) — a cascading chain |
+| Frustration | 0 | Always empty — deferred |
+| Interference events (raw) | 2 | Matches the 2 Prohibitions 1:1 in this chart, since both intervening events happen to satisfy Lilly's specific rule; the raw layer is not defined as always equal to Prohibition's count in general |
+
+Zero new production dependencies, zero network calls (confirmed:
+`npx vite build` diffs to an empty `package.json`/`package-lock.json`
+change once the temporary, dev-only, immediately-uninstalled Playwright
+UI-screenshot check is excluded — see the project's established UI
+verification pattern used in every prior phase). All 312 tests pass
+(289 carried over from Phase 1–3G-A unchanged, plus 23 new Phase 3G-B
+tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:
