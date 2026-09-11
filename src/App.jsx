@@ -123,7 +123,7 @@ function App() {
           <label htmlFor="lilithType">Lilith Type｜莉莉丝类型</label>
           <select id="lilithType" value={input.lilithType} onChange={handleChange("lilithType")}>
             <option value="mean">Mean｜平位</option>
-            <option value="true">True/Osculating｜真位（密切）</option>
+            <option value="osculating">Osculating｜密切点</option>
           </select>
         </div>
 

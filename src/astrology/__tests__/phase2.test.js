@@ -72,12 +72,39 @@ describe("Phase 2: Modern Western 26-point data model", () => {
     expect(findPoint(meanChart, "northNode").meta.nodeType).toBe("mean");
   });
 
-  it("TEST 7: Lilith convention is explicitly stored (mean/true)", () => {
+  it("TEST 7: Lilith convention is explicitly stored (mean/osculating)", () => {
     const lilith = findPoint(chart, "lilith");
-    expect(["mean", "true"]).toContain(lilith.meta.lilithType);
+    expect(["mean", "osculating"]).toContain(lilith.meta.lilithType);
 
-    const trueChart = calculateChart({ ...VERIFICATION_INPUT, lilithType: "true" });
-    expect(findPoint(trueChart, "lilith").meta.lilithType).toBe("true");
+    const osculatingChart = calculateChart({ ...VERIFICATION_INPUT, lilithType: "osculating" });
+    expect(findPoint(osculatingChart, "lilith").meta.lilithType).toBe("osculating");
+  });
+
+  it("Lilith carries a convention/model-dependence note, not an accuracy complaint", () => {
+    const lilith = findPoint(chart, "lilith");
+    const note = lilith.meta.conventionNote.toLowerCase();
+    expect(typeof lilith.meta.conventionNote).toBe("string");
+    expect(note).toMatch(/convention|model-dependent/);
+    // The note may discuss the concept of accuracy while explaining the
+    // convention, but must not assert the point IS inaccurate/invalid.
+    expect(note).not.toMatch(/is (an )?inaccurate|is (an )?invalid/);
+    expect(typeof lilith.meta.verificationDifferenceArcsec).toBe("number");
+  });
+
+  it("chart.meta permanently stores zodiacType, houseSystem, nodeType, lilithType", () => {
+    expect(chart.meta.zodiacType).toBe("tropical");
+    expect(chart.meta.houseSystem).toBe("placidus");
+    expect(["true", "mean"]).toContain(chart.meta.nodeType);
+    expect(["mean", "osculating"]).toContain(chart.meta.lilithType);
+  });
+
+  it("calculated points expose calculationMethod/calculationConvention/verificationDifferenceArcsec", () => {
+    for (const id of ["northNode", "southNode", "lilith", "vertex", "eastPoint", "partOfFortune"]) {
+      const p = findPoint(chart, id);
+      expect(typeof p.meta.calculationMethod).toBe("string");
+      expect(typeof p.meta.calculationConvention).toBe("string");
+      expect("verificationDifferenceArcsec" in p.meta).toBe(true);
+    }
   });
 
   it("TEST 8: every non-angle, implemented point with a longitude receives a valid house 1-12", () => {

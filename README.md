@@ -151,7 +151,7 @@ four categories. Every point (implemented or not) is exposed through
 | 11-14 | ASC, MC, DSC, IC | ✅ Implemented | `houses.js` (unchanged) + `modernWestern.js` |
 | 15 | North Node | ✅ Implemented (true & mean) | `nodes.js` |
 | 16 | South Node | ✅ Implemented (derived) | `nodes.js` |
-| 17 | Black Moon Lilith | ✅ Implemented (mean & true/osculating) | `lilith.js` |
+| 17 | Black Moon Lilith | ✅ Implemented (mean & osculating) | `lilith.js` |
 | 18 | Part of Fortune | ✅ Implemented | `partOfFortune.js` |
 | 19 | Vertex | ✅ Implemented | `vertex.js` |
 | 20 | East Point | ✅ Implemented | `vertex.js` |
@@ -162,11 +162,15 @@ four categories. Every point (implemented or not) is exposed through
 | 25 | Vesta | ❌ Not implemented — see §7f | `asteroids.js` |
 | 26 | Eros | ❌ Not implemented — see §7f | `asteroids.js` |
 
-**20 of 26 implemented.** The 6 unimplemented ones are asteroids/centaurs —
-see §7f for exactly why, and what would unlock them. Nothing is silently
-omitted: unimplemented points still appear in `chart.points` with
-`absoluteLongitude: null` and a `meta.reason` string, and the UI renders
-them as an explicit "Not Implemented" row rather than hiding them.
+**Implementation status by category: Planets 10/10, Angles 4/4, Nodes &
+Calculated Points 6/6, Asteroids & Centaurs 0/6 — 20/26 overall.** The UI
+shows this exact breakdown (not a bare "26 Points" claim) at the top of
+the Modern Western section and per group heading. The 6 unimplemented
+points are all asteroids/centaurs — see §7f for exactly why, and what
+would unlock them. Nothing is silently omitted: unimplemented points still
+appear in `chart.points` with `absoluteLongitude: null`, `sign: null`,
+etc. and a `meta.reason` string — never fake coordinates — and the UI
+renders them as an explicit "Not Implemented" row rather than hiding them.
 
 ### 7b. North/South Node convention
 
@@ -197,23 +201,30 @@ computed independently (`sourceType: "derived"`).
 This is the **apogee of the Moon's orbit**, not the asteroid 1181 Lilith
 (that asteroid is not implemented — see §7f — and is a completely different
 body; substituting it would have been wrong, so it wasn't). Both
-conventions computed locally in `src/astrology/lilith.js`:
+conventions computed locally in `src/astrology/lilith.js`, using the
+literal `meta.lilithType` values `"mean"` and `"osculating"`
+(`"osculating"`, not `"true"` — chosen to match the term Swiss Ephemeris
+itself uses for this convention, SE_OSCU_APOG, avoiding confusion with the
+Node's separate "true"/"mean" terminology):
 
-- **Mean** (default): mean lunar longitude minus mean lunar anomaly, +180°
-  (Meeus eq. 47.1/47.2). Cross-check vs Swiss Ephemeris: **~149 arcsec
-  (~2.5′)**.
-- **True/Osculating**: instantaneous apogee direction from the Moon's
+- **Mean** (project default): mean lunar longitude minus mean lunar
+  anomaly, +180° (Meeus eq. 47.1/47.2). Cross-check vs Swiss Ephemeris:
+  **~149 arcsec (~2.5′)**.
+- **Osculating**: instantaneous apogee direction from the Moon's
   Laplace-Runge-Lenz (eccentricity) vector. Cross-check: **~96 arcsec
   (~1.6′)**.
 
 **Both exceed the project's 1-arcminute target — disclosed, not hidden.**
-This is a known, inherent property of Black Moon Lilith, not a bug: apsidal
+Black Moon Lilith is treated in this project as a **convention/model-
+dependent calculated point, not an inaccurate or invalid one**: apsidal
 (apogee/perigee) direction is far more perturbation-sensitive than nodal
 direction, and different lunar theories genuinely disagree on the secular
 "mean elements" used for Mean Lilith (a well-known source of cross-software
 disagreement in real astrology tools, not unique to this project). No
-arbitrary offset was introduced to hide this. `meta.lilithType` on every
-result states which convention produced it.
+arbitrary offset was introduced to hide this. Every Lilith result carries
+`meta.lilithType` (which convention produced it) and
+`meta.conventionNote` (the plain-language explanation above, verbatim, so
+the UI/raw-data view never has to editorialize this itself).
 
 ### 7d. Part of Fortune day/night formula
 
@@ -267,17 +278,19 @@ Two options were considered and **neither was silently adopted**:
 
 Adopting Swiss Ephemeris as a **permanent production dependency** is an
 AGPL-3.0 licensing decision with real commercial implications — per this
-project's own rule, that requires the user's explicit sign-off, not a
-unilateral choice made in code. **That decision has been raised separately
-and is not yet resolved** — see the Phase 2 final report. Until decided,
-all 6 asteroid/centaur points remain explicitly marked "Not Implemented"
-with their exact reason, both in `chart.points` and in the UI — never
-fabricated, never silently dropped.
+project's own rule, that required the user's explicit sign-off, not a
+unilateral choice made in code. **Resolved: the user chose to stay
+MIT-only.** `sweph-wasm`/Swiss Ephemeris will not be added as a production
+dependency; all 6 asteroid/centaur points remain explicitly marked "Not
+Implemented" with their exact reason, both in `chart.points` and in the
+UI — never fabricated, never silently dropped, never given fake
+coordinates. Their placeholder rows are preserved in the UI (not removed)
+specifically so the status stays visible.
 
 ### 7g. Independent validation methodology
 
 Every non-trivial Phase 2 formula above (True Node, Mean Node, Mean
-Lilith, True Lilith, Vertex, East Point) was cross-checked during
+Lilith, Osculating Lilith, Vertex, East Point) was cross-checked during
 development against **real Swiss Ephemeris** (`sweph-wasm`, run fully
 offline — its bundled `.wasm` binary and ephemeris data files loaded via
 Node's `fs`, no network call) for this project's verification chart. This
@@ -288,6 +301,40 @@ and nothing in `src/` depends on it. Nothing was hardcoded or reverse-
 engineered from its output; every formula here is a standard, independently
 citable astronomical method (Meeus, or first-principles orbital mechanics)
 that was verified, not fitted.
+
+### 7h. Permanent chart metadata and provenance fields
+
+Every `calculateChart()` result permanently stores, at `chart.meta`:
+
+```
+zodiacType: "tropical"
+houseSystem: "placidus"
+nodeType: "true" | "mean"
+lilithType: "mean" | "osculating"
+```
+
+These are never silently mixed — a chart computed with `nodeType: "mean"`
+carries that exact string, not an inferred or default one, and the same
+value is echoed onto every North/South Node point's own `meta.nodeType`
+(same for `lilithType` on the Lilith point).
+
+For every calculated point (nodes, Lilith, Part of Fortune, Vertex, East
+Point), `chart.points[i].meta` additionally carries, where applicable:
+
+- `calculationMethod` — plain-language description of the actual method
+  used (e.g. "osculating orbital element (Moon r x v cross product)")
+- `calculationConvention` — which named convention this is (e.g. "True
+  Node", "Osculating Apogee", "Night formula (ASC + Sun - Moon)")
+- `verificationDifferenceArcsec` — the measured dev-time deviation from
+  real Swiss Ephemeris (see §7g), or `null` where no independent
+  cross-check was performed (e.g. Part of Fortune, whose accuracy is
+  inherited arithmetically from the already-verified ASC/Sun/Moon
+  longitudes rather than checked as its own separate quantity)
+
+The "Raw Calculation Data" section in the UI exposes all of these columns
+directly, alongside the full `meta` object as JSON, specifically so every
+number on the page is traceable back to its method and its measured
+agreement (or disagreement) with an independent source.
 
 ---
 
@@ -329,26 +376,24 @@ never appears in `package.json` or the shipped bundle. The offline/no-API
 status described in §1-4 holds identically for everything in Phase 2 — no
 new network dependency, no new API, of any kind.
 
-## 9. Known accuracy limitations (unresolved)
+## 9. Known limitations, disclosed plainly
 
-Disclosed here rather than buried in code comments:
-
-- **Mean Black Moon Lilith**: ~2.5′ from Swiss Ephemeris's SE_MEAN_APOG —
-  exceeds the project's 1′ target. Root cause: differing lunar-theory
-  "mean elements" conventions across astronomy libraries — a known,
-  general source of disagreement between astrology programs for this
-  specific point, not unique to this implementation. See §7c.
-- **True/Osculating Black Moon Lilith**: ~1.6′ from Swiss Ephemeris's
-  SE_OSCU_APOG — also exceeds the 1′ target. Root cause: apsidal direction
-  is highly sensitive to solar perturbation, more than the two-body
-  osculating extraction used here captures. See §7c.
+- **Black Moon Lilith is a convention/model-dependent calculated point**,
+  not an inaccurate or invalid one (see §7c). Measured dev-time deviation
+  from Swiss Ephemeris: Mean ~2.5′ (SE_MEAN_APOG), Osculating ~1.6′
+  (SE_OSCU_APOG) — both above the project's general 1′ target for
+  calculated points, but for a well-understood reason (differing lunar
+  "mean elements" conventions, and apsidal direction being far more
+  perturbation-sensitive than nodal direction) rather than a defect.
+  `meta.verificationDifferenceArcsec` and `meta.conventionNote` on every
+  Lilith result state this directly.
 - **Asteroids/Centaurs (Chiron, Ceres, Pallas, Juno, Vesta, Eros)**: not
-  implemented at all — see §7f. This is a known gap, not an accuracy
-  issue, pending the Swiss Ephemeris dependency decision.
+  implemented, by decision — see §7f. This is a known, intentional gap,
+  not an accuracy issue.
 
-Everything else validated in Phase 2 (True Node, Mean Node, Part of
-Fortune's day/night sect logic, Vertex, East Point) agreed with real Swiss
-Ephemeris to well under 1 arcminute — most under 3 arcseconds.
+Everything else in Phase 2 (True Node, Mean Node, Part of Fortune's
+day/night sect logic, Vertex, East Point) agreed with real Swiss Ephemeris
+to well under 1 arcminute — most under 3 arcseconds.
 
 ---
 

@@ -37,6 +37,15 @@
 import * as Astronomy from "astronomy-engine";
 import { normalizeDegrees } from "./zodiac.js";
 
+// Dev-time cross-check results vs real Swiss Ephemeris (see module doc
+// comment above) — measured once during development, not re-derived at
+// runtime. Exposed so the UI/raw-data view can cite them without
+// duplicating magic numbers.
+export const NODE_VERIFICATION_ARCSEC = {
+  true: 2.9,
+  mean: 10.8,
+};
+
 /**
  * Mean ascending node longitude (Meeus, low-precision secular series).
  * @param {Astronomy.AstroTime} astroTime
@@ -78,11 +87,11 @@ export function computeTrueNode(astroTime) {
  * North Node longitude for the requested convention.
  * @param {Astronomy.AstroTime} astroTime
  * @param {"true"|"mean"} nodeType
- * @returns {{ longitude: number, nodeType: "true"|"mean" }}
+ * @returns {{ longitude: number, nodeType: "true"|"mean", verificationDifferenceArcsec: number }}
  */
 export function computeNorthNode(astroTime, nodeType = "true") {
   const longitude = nodeType === "mean" ? computeMeanNode(astroTime) : computeTrueNode(astroTime);
-  return { longitude, nodeType };
+  return { longitude, nodeType, verificationDifferenceArcsec: NODE_VERIFICATION_ARCSEC[nodeType] ?? NODE_VERIFICATION_ARCSEC.true };
 }
 
 /**

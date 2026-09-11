@@ -26,6 +26,12 @@
 import * as Astronomy from "astronomy-engine";
 import { normalizeDegrees } from "./zodiac.js";
 
+// Dev-time cross-check results vs real Swiss Ephemeris (see module doc
+// comment above) — measured once during development, not re-derived at
+// runtime.
+export const EAST_POINT_VERIFICATION_ARCSEC = 0.089;
+export const VERTEX_VERIFICATION_ARCSEC = 0.003;
+
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 const sinD = (d) => Math.sin(d * DEG2RAD);

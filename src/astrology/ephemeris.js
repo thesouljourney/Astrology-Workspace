@@ -121,6 +121,7 @@ export function calculateChart(input) {
       utcDate,
       utcIso: utcDate.toISOString(),
       julianDay,
+      zodiacType: "tropical",
       houseSystem,
       nodeType,
       lilithType,

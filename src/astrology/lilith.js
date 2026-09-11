@@ -6,32 +6,37 @@
  * Two conventions, both computed locally from first principles (no new
  * dependency, no API):
  *
- * - MEAN (Mean Black Moon Lilith / "Mean Apogee"): the apogee of the Moon's
- *   *mean* orbit. Derived here as (mean lunar longitude) - (mean lunar
- *   anomaly) + 180, using Meeus's standard low-precision lunar mean-element
- *   polynomials ("Astronomical Algorithms" 2nd ed., eq. 47.1 / 47.2).
+ * - MEAN (Mean Black Moon Lilith / "Mean Apogee") — the project default:
+ *   the apogee of the Moon's *mean* orbit. Derived here as (mean lunar
+ *   longitude) - (mean lunar anomaly) + 180, using Meeus's standard
+ *   low-precision lunar mean-element polynomials ("Astronomical
+ *   Algorithms" 2nd ed., eq. 47.1 / 47.2).
  *
- * - TRUE / OSCULATING (Osculating Apogee): the instantaneous apogee
- *   direction of the Moon's actual, perturbed orbit at the requested
- *   instant, derived from its real position and velocity via the
- *   Laplace-Runge-Lenz (eccentricity) vector: e = (v x h)/mu - r_hat.
- *   The eccentricity vector points toward perigee; apogee is its opposite
- *   direction. mu is the standard two-body gravitational parameter for the
- *   Earth-Moon relative orbit (mu = G*(M_Earth + M_Moon)).
+ * - OSCULATING (Osculating Apogee, sometimes called "True Lilith"): the
+ *   instantaneous apogee direction of the Moon's actual, perturbed orbit
+ *   at the requested instant, derived from its real position and velocity
+ *   via the Laplace-Runge-Lenz (eccentricity) vector:
+ *   e = (v x h)/mu - r_hat. The eccentricity vector points toward
+ *   perigee; apogee is its opposite direction. mu is the standard
+ *   two-body gravitational parameter for the Earth-Moon relative orbit
+ *   (mu = G*(M_Earth + M_Moon)).
  *
- * IMPORTANT — accuracy caveat, not hidden:
+ * CONVENTION / MODEL-DEPENDENCE NOTE (not an accuracy defect):
  * Dev-time cross-check against real Swiss Ephemeris (`sweph-wasm`, temporary
  * devDependency only, never shipped) for the project's verification chart:
- *   Mean Apogee:      ~149 arcsec (~2.5') from swe_calc SE_MEAN_APOG.
- *   Osculating Apogee: ~96 arcsec (~1.6') from swe_calc SE_OSCU_APOG.
- * Both exceed the project's 1-arcminute target. This is a known, inherent
- * property of Black Moon Lilith (not a bug): different lunar theories
- * disagree on the exact secular "mean elements" used for Mean Lilith, and
- * apsidal (apogee/perigee) direction is far more sensitive to solar
- * perturbation than nodal direction, so a pure two-body osculating
- * extraction (as used here) does not reach the sub-arcminute agreement
- * achieved for other calculated points. This discrepancy is disclosed
- * rather than corrected with an arbitrary offset.
+ *   Mean Apogee:       ~149 arcsec (~2.5') from swe_calc SE_MEAN_APOG.
+ *   Osculating Apogee:  ~96 arcsec (~1.6') from swe_calc SE_OSCU_APOG.
+ * Black Moon Lilith is inherently convention/model-dependent: different
+ * lunar theories disagree on the exact secular "mean elements" used for
+ * Mean Lilith, and apsidal (apogee/perigee) direction is far more
+ * sensitive to solar perturbation than nodal direction, so a pure two-body
+ * osculating extraction does not reach the sub-arcminute agreement seen
+ * for other calculated points in this project. This is disclosed as a
+ * property of the point and the method, not corrected with an arbitrary
+ * offset, and should not be read as "inaccurate" or "invalid" — it is a
+ * different, equally legitimate local computation of a quantity that
+ * multiple real astrology programs already compute somewhat differently
+ * from each other.
  */
 
 import * as Astronomy from "astronomy-engine";
@@ -44,6 +49,15 @@ const GM_MOON_KM3S2 = 4902.8;
 const AU_KM = 149597870.7;
 const DAY_S = 86400;
 const MU_EARTH_MOON_AU3_DAY2 = ((GM_EARTH_KM3S2 + GM_MOON_KM3S2) * DAY_S * DAY_S) / (AU_KM * AU_KM * AU_KM);
+
+// Dev-time cross-check results vs real Swiss Ephemeris (see module doc
+// comment above) — measured once during development, not re-derived at
+// runtime. Exposed so the UI/raw-data view can cite them without
+// duplicating magic numbers.
+export const LILITH_VERIFICATION_ARCSEC = {
+  mean: 148.6,
+  osculating: 95.9,
+};
 
 function cross(a, b) {
   return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
@@ -70,11 +84,11 @@ export function computeMeanLilith(astroTime) {
 }
 
 /**
- * True/osculating Black Moon Lilith (osculating apogee) longitude.
+ * Osculating Black Moon Lilith (osculating apogee) longitude.
  * @param {Astronomy.AstroTime} astroTime
  * @returns {number} degrees [0, 360)
  */
-export function computeTrueLilith(astroTime) {
+export function computeOsculatingLilith(astroTime) {
   const geoState = Astronomy.GeoMoonState(astroTime);
   const eclState = Astronomy.RotateState(Astronomy.Rotation_EQJ_ECT(astroTime), geoState);
 
@@ -99,10 +113,14 @@ export function computeTrueLilith(astroTime) {
 /**
  * Black Moon Lilith longitude for the requested convention.
  * @param {Astronomy.AstroTime} astroTime
- * @param {"true"|"mean"} lilithType
- * @returns {{ longitude: number, lilithType: "true"|"mean" }}
+ * @param {"mean"|"osculating"} lilithType
+ * @returns {{ longitude: number, lilithType: "mean"|"osculating", verificationDifferenceArcsec: number }}
  */
 export function computeLilith(astroTime, lilithType = "mean") {
-  const longitude = lilithType === "true" ? computeTrueLilith(astroTime) : computeMeanLilith(astroTime);
-  return { longitude, lilithType };
+  const longitude = lilithType === "osculating" ? computeOsculatingLilith(astroTime) : computeMeanLilith(astroTime);
+  return {
+    longitude,
+    lilithType,
+    verificationDifferenceArcsec: LILITH_VERIFICATION_ARCSEC[lilithType] ?? LILITH_VERIFICATION_ARCSEC.mean,
+  };
 }

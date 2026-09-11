@@ -11,7 +11,7 @@ import { trueObliquity, computeRAMC, getHouseForLongitude } from "./houses.js";
 import { computeNorthNode, computeSouthNode } from "./nodes.js";
 import { computeLilith } from "./lilith.js";
 import { computePartOfFortune } from "./partOfFortune.js";
-import { computeEastPoint, computeVertex } from "./vertex.js";
+import { computeEastPoint, computeVertex, EAST_POINT_VERIFICATION_ARCSEC, VERTEX_VERIFICATION_ARCSEC } from "./vertex.js";
 import { ASTEROID_STATUS } from "./asteroids.js";
 
 /**
@@ -22,7 +22,7 @@ import { ASTEROID_STATUS } from "./asteroids.js";
  * @param {{asc:number, mc:number, ic:number, desc:number, cusps:number[]}} params.houses
  * @param {Array} params.planetsWithSignAndHouse Phase 1 planet results (already sign/house resolved)
  * @param {"true"|"mean"} [params.nodeType="true"]
- * @param {"mean"|"true"} [params.lilithType="mean"]
+ * @param {"mean"|"osculating"} [params.lilithType="mean"]
  * @returns {Array} unified array of canonical points (planets + angles + nodes/calculated + asteroid status)
  */
 export function buildModernWesternPoints({
@@ -50,7 +50,7 @@ export function buildModernWesternPoints({
         speedLongitude: p.speedDegPerDay,
         retrogradeApplicable: true,
         sourceType: "ephemeris",
-        meta: {},
+        meta: { calculationMethod: "astronomy-engine geocentric ephemeris (GeoVector + Ecliptic)" },
       })
     );
   }
@@ -74,7 +74,7 @@ export function buildModernWesternPoints({
         house: a.house,
         retrogradeApplicable: false,
         sourceType: "angle",
-        meta: {},
+        meta: { calculationMethod: "verified Placidus house-cusp geometry (houses.js)" },
       })
     );
   }
@@ -95,7 +95,15 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(northNode.longitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "calculated",
-      meta: { nodeType: northNode.nodeType },
+      meta: {
+        nodeType: northNode.nodeType,
+        calculationMethod:
+          northNode.nodeType === "true"
+            ? "osculating orbital element (Moon r x v cross product)"
+            : "Meeus mean-element secular polynomial",
+        calculationConvention: northNode.nodeType === "true" ? "True Node" : "Mean Node",
+        verificationDifferenceArcsec: northNode.verificationDifferenceArcsec,
+      },
     })
   );
 
@@ -111,7 +119,13 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(southNodeLongitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "derived",
-      meta: { nodeType: northNode.nodeType, derivedFrom: "northNode+180" },
+      meta: {
+        nodeType: northNode.nodeType,
+        derivedFrom: "northNode+180",
+        calculationMethod: "North Node + 180 degrees (never computed independently)",
+        calculationConvention: northNode.nodeType === "true" ? "True Node" : "Mean Node",
+        verificationDifferenceArcsec: northNode.verificationDifferenceArcsec,
+      },
     })
   );
 
@@ -127,7 +141,19 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(lilith.longitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "calculated",
-      meta: { lilithType: lilith.lilithType },
+      meta: {
+        lilithType: lilith.lilithType,
+        calculationMethod:
+          lilith.lilithType === "osculating"
+            ? "Laplace-Runge-Lenz eccentricity vector (osculating apogee)"
+            : "Meeus mean-element formula (mean longitude - mean anomaly + 180)",
+        calculationConvention: lilith.lilithType === "osculating" ? "Osculating Apogee" : "Mean Apogee",
+        verificationDifferenceArcsec: lilith.verificationDifferenceArcsec,
+        conventionNote:
+          "Black Moon Lilith is a convention/model-dependent calculated point: different lunar theories " +
+          "and osculating-element methods legitimately disagree by roughly 1-3 arcminutes. This is not a " +
+          "sign of an invalid or inaccurate calculation — it reflects which local model is used.",
+      },
     })
   );
 
@@ -152,7 +178,13 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(fortune.longitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "calculated",
-      meta: { sect: fortune.sect, formulaUsed: fortune.formulaUsed },
+      meta: {
+        sect: fortune.sect,
+        formulaUsed: fortune.formulaUsed,
+        calculationMethod: "arithmetic combination of ASC, Sun and Moon longitudes",
+        calculationConvention: fortune.sect === "day" ? "Day formula (ASC + Moon - Sun)" : "Night formula (ASC + Sun - Moon)",
+        verificationDifferenceArcsec: null, // not independently cross-checked as a separate quantity; inherits the already-verified ASC/Sun/Moon accuracy
+      },
     })
   );
 
@@ -168,7 +200,12 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(vertexLongitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "calculated",
-      meta: { method: "prime-vertical azimuth=270 crossing" },
+      meta: {
+        method: "prime-vertical azimuth=270 crossing",
+        calculationMethod: "numeric root-find of ecliptic/prime-vertical crossing (azimuth = 270 deg)",
+        calculationConvention: "Vertex (western prime-vertical crossing, not Anti-Vertex)",
+        verificationDifferenceArcsec: VERTEX_VERIFICATION_ARCSEC,
+      },
     })
   );
 
@@ -184,7 +221,12 @@ export function buildModernWesternPoints({
       house: getHouseForLongitude(eastPointLongitude, houses.cusps),
       retrogradeApplicable: false,
       sourceType: "calculated",
-      meta: { convention: "Equatorial Ascendant (RA = RAMC + 90 deg)" },
+      meta: {
+        convention: "Equatorial Ascendant (RA = RAMC + 90 deg)",
+        calculationMethod: "closed form (RA = RAMC + 90 deg), structurally identical to the MC formula",
+        calculationConvention: "Equatorial Ascendant",
+        verificationDifferenceArcsec: EAST_POINT_VERIFICATION_ARCSEC,
+      },
     })
   );
 

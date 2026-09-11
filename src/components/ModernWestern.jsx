@@ -16,7 +16,7 @@ function motionOrTypeLabel(p) {
     return p.meta.nodeType === "true" ? "True Node｜真交点" : "Mean Node｜平交点";
   }
   if (p.id === "lilith") {
-    return p.meta.lilithType === "true" ? "True/Osculating｜真位" : "Mean｜平位";
+    return p.meta.lilithType === "osculating" ? "Osculating｜密切点" : "Mean｜平位";
   }
   if (p.id === "partOfFortune") {
     return p.meta.sect === "day" ? "Day Formula｜日盘公式" : "Night Formula｜夜盘公式";
@@ -54,16 +54,28 @@ function ModernWesternRow({ point }) {
 }
 
 export default function ModernWestern({ chart }) {
+  const implementedCount = chart.points.filter((p) => p.absoluteLongitude !== null).length;
+  const totalCount = chart.points.length;
+
   return (
     <section className="modern-western">
-      <h2>Modern Western｜现代西方占星（26 Points）</h2>
+      <h2>Modern Western｜现代西方占星</h2>
+      <p className="implementation-summary">
+        Implemented｜已实现: {implementedCount}/{totalCount} — Planets 10/10, Angles 4/4, Nodes & Calculated Points
+        6/6, Asteroids & Centaurs 0/6
+      </p>
+      <p className="chart-conventions">
+        zodiacType: {chart.meta.zodiacType} · houseSystem: {chart.meta.houseSystem} · nodeType: {chart.meta.nodeType} ·
+        lilithType: {chart.meta.lilithType}
+      </p>
 
       {GROUPS.map((group) => {
         const points = chart.points.filter((p) => group.categories.includes(p.category));
+        const implemented = points.filter((p) => p.absoluteLongitude !== null).length;
         return (
           <div key={group.titleEn}>
             <h3>
-              {group.titleEn}｜{group.titleCn}
+              {group.titleEn}｜{group.titleCn} ({implemented}/{points.length})
             </h3>
             <table>
               <thead>
@@ -98,7 +110,10 @@ export default function ModernWestern({ chart }) {
               <th>speedLongitude</th>
               <th>retrograde</th>
               <th>sourceType</th>
-              <th>meta</th>
+              <th>calculationMethod</th>
+              <th>calculationConvention</th>
+              <th>verificationDifferenceArcsec</th>
+              <th>meta (full)</th>
             </tr>
           </thead>
           <tbody>
@@ -112,6 +127,9 @@ export default function ModernWestern({ chart }) {
                 <td>{p.motion?.speedLongitude != null ? p.motion.speedLongitude.toFixed(6) : "null"}</td>
                 <td>{p.motion ? String(p.motion.retrograde) : "null"}</td>
                 <td>{p.sourceType ?? "null"}</td>
+                <td>{p.meta?.calculationMethod ?? "—"}</td>
+                <td>{p.meta?.calculationConvention ?? "—"}</td>
+                <td>{p.meta?.verificationDifferenceArcsec != null ? p.meta.verificationDifferenceArcsec : "—"}</td>
                 <td className="meta-cell">{JSON.stringify(p.meta)}</td>
               </tr>
             ))}
