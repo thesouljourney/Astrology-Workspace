@@ -29,6 +29,20 @@ export const CLASSICAL_META = {
   // Reception through the five positive essential dignities only
   // (domicile/exaltation/triplicity/term/face) — see reception.js.
   receptionConvention: "traditional_five_positive_dignities",
+  // IMPORTANT: this is a raw directional DIGNITY-HOLDER relationship
+  // (A occupies a sign/degree dignified by B -> B hosts/receives A),
+  // not a judgment that the relationship is a complete or "operative"
+  // reception. Historical authors disagree on whether any single
+  // dignity relationship alone qualifies as full reception, or whether
+  // it additionally requires an aspect/application between the two
+  // planets, and/or domicile-or-exaltation specifically, and/or two
+  // simultaneous minor dignities (see README §14 and reception.js's doc
+  // comment). That qualification question is deliberately NOT decided
+  // here — it depends on aspect/application data this project has not
+  // yet implemented (a future phase). "not_yet_evaluated" is not a
+  // placeholder for a later default; it means Phase 3E takes no
+  // position on it at all.
+  receptionQualification: "not_yet_evaluated",
 };
 
 /**

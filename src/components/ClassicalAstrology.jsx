@@ -313,6 +313,7 @@ function PlanetDetail({ p }) {
       </table>
 
       <h4>Dispositor & Reception｜定位星与接纳</h4>
+      <p className="reception-note">Reception by dignity — not yet qualified by aspect｜按尊贵接纳 — 尚未经相位判定</p>
       <table className="detail-table">
         <tbody>
           <tr>
@@ -551,6 +552,7 @@ export default function ClassicalAstrology({ chart }) {
       </table>
 
       <h3>Dispositor & Reception｜定位星与接纳</h3>
+      <p className="reception-note">Reception by dignity — not yet qualified by aspect｜按尊贵接纳 — 尚未经相位判定</p>
       <table className="classical-table">
         <thead>
           <tr>
@@ -586,6 +588,7 @@ export default function ClassicalAstrology({ chart }) {
       </table>
 
       <h3>Mutual Reception｜互容</h3>
+      <p className="reception-note">Mutual dignity relationship — not "perfect" or operative reception｜互相尊贵接纳 — 非"完全"或已判定的接纳</p>
       {classical.mutualReceptions.length === 0 ? (
         <p>No mutual reception found.｜未发现互容。</p>
       ) : (

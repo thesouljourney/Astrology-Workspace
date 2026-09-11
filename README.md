@@ -714,6 +714,27 @@ rulership/triplicity/term/face table, no score. Adds `dispositor` and
 `chart.classical.planets`, plus `chart.classical.receptionMatrix` and
 `chart.classical.mutualReceptions`.
 
+**Scope: dignity relationship, not settled "operative" reception.**
+Phase 3E records a raw, directional DIGNITY RELATIONSHIP — "planet A
+occupies a sign/degree dignified by planet B, therefore B hosts/receives
+A" — across the five positive essential dignities. Historical authors
+disagree on when this relationship should be called a *complete* or
+*operative* reception: some medieval approaches additionally require an
+aspect/application between the two planets before it "perfects," and/or
+require the relationship to be by domicile or exaltation specifically,
+or by two simultaneous minor dignities, before weighting it as
+significant; broader traditional and modern usage instead calls any
+single dignity relationship "reception" outright. Because this project
+has not yet implemented aspects/application (a future phase), Phase 3E
+deliberately does **not** decide that question — it preserves the raw
+dignity relationships (including single minor-dignity ones) so a future
+phase can evaluate operative/perfected reception under an explicitly
+chosen convention, rather than presenting one historical convention as
+already settled. This is recorded in the data itself via
+`chart.classical.meta.receptionQualification: "not_yet_evaluated"` (see
+Metadata, below) and is why the UI labels this section "Reception by
+dignity — not yet qualified by aspect" rather than simply "Reception."
+
 **Direction** (cross-checked against Wikipedia's "Reception (astrology)"
 and Kerykeion's traditional-reception reference, consistent with each
 other and with William Lilly's usage): if planet A occupies a sign/degree
@@ -762,9 +783,12 @@ same matrix (receives = planets **this** planet receives; receivedBy =
 planets that receive **this** planet) — verified by test to be exact
 inverses.
 
-**Mutual reception**: computed per unordered pair, never assumed — A
-receives B and B receives A may be through the same dignity or different
-ones (not required to match, per the brief).
+**Mutual dignity reception** (not "perfect" or operative reception):
+computed per unordered pair, never assumed — A receives B and B receives
+A may be through the same dignity or different ones (not required to
+match, per the brief). `isMutual: true` means only that the directional
+dignity relationship holds in both directions, per the scope note above —
+it is not a claim that the pairing perfects in the judgment sense.
 
 **Mercury** is treated exactly like the other six planets — reception
 depends on dignity rulership only; `getDignityRulersAt()`'s signature
@@ -810,11 +834,18 @@ simultaneous reception types are preserved rather than collapsed.
 
 Stored metadata (`chart.classical.meta`, existing keys preserved):
 `receptionConvention: "traditional_five_positive_dignities"`,
-`rulershipSystem`, `triplicitySystem`, `termSystem`, `faceSystem`
-(all unchanged from Phase 3A).
+`receptionQualification: "not_yet_evaluated"` (the Phase 3E/3F boundary
+marker described above — not a placeholder for a later default, but an
+explicit statement that Phase 3E takes no position on operative/perfected
+reception), `rulershipSystem`, `triplicitySystem`, `termSystem`,
+`faceSystem` (all unchanged from Phase 3A).
 
-Zero new dependencies, zero network calls. All 209 tests pass (184
-carried over from Phase 1–3D unchanged, plus 25 new Phase 3E tests).
+Zero new dependencies, zero network calls, **zero calculation changes**
+in this refinement — the dignity matrix, dispositor chains, and mutual
+reception results are numerically identical to the original Phase 3E
+implementation; only terminology, documentation, and metadata changed.
+All 221 tests pass (209 carried over from Phase 1–3E unchanged, plus 12
+new regression tests for this refinement).
 
 ---
 

@@ -191,6 +191,13 @@ th {
   font-size: 0.82rem;
 }
 
+.reception-note {
+  color: #888;
+  font-style: italic;
+  font-size: 0.8rem;
+  margin: 2px 0 8px;
+}
+
 .classical-table th,
 .classical-table td {
   text-align: center;

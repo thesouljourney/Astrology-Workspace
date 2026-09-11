@@ -1,6 +1,28 @@
 /**
  * Reception — Phase 3E.
  *
+ * SCOPE, PRECISELY: this module computes a raw, directional DIGNITY
+ * RELATIONSHIP — "planet A occupies a sign/degree dignified by planet
+ * B, therefore B hosts/receives A" — for each of the five positive
+ * essential dignities. It does NOT decide whether that relationship
+ * rises to a complete or "operative" reception in the judgment sense.
+ *
+ * Historical authors disagree on that further question: some medieval
+ * approaches require an aspect/application between the two planets
+ * before reception is considered to "perfect," and/or require the
+ * relationship to be by domicile or exaltation specifically, or by two
+ * simultaneous minor dignities, before it is weighted as significant;
+ * broader traditional and modern usage instead calls any single dignity
+ * relationship (domicile/exaltation/triplicity/term/face alike)
+ * "reception" outright, exactly as implemented here. This project has
+ * not yet implemented aspects/application (a future phase), so it
+ * cannot and does not settle that qualification question — see
+ * chart.classical.meta.receptionQualification: "not_yet_evaluated" and
+ * README §14. The functions below, and the "receives"/"receivedBy"/
+ * mutual-reception results they produce, should be read as this raw
+ * dignity-relationship layer, not as a claim of "perfect" or
+ * "operative" reception.
+ *
  * RULE LOGIC ONLY, reusing the exact locked Phase 3A dignity tables
  * (domicile via rules/rulership.js, exaltation via rules/exaltation.js,
  * Dorothean triplicity via rules/triplicity.js, Egyptian terms via
@@ -118,10 +140,19 @@ export function getReceptionForPlanet(matrix, planetKey) {
 }
 
 /**
- * All mutual-reception pairs actually present in the matrix — computed,
- * never assumed. Each unordered pair {A,B} is tested once; A receives B
- * and B receives A may be through the same dignity type or different
- * ones (not required to match, per the project brief).
+ * All MUTUAL DIGNITY RELATIONSHIP pairs actually present in the matrix —
+ * computed, never assumed. Each unordered pair {A,B} is tested once; A
+ * receives B and B receives A may be through the same dignity type or
+ * different ones (not required to match, per the project brief).
+ *
+ * TERMINOLOGY: this is mutual dignity reception / mutual dignity
+ * relationship in the raw sense described in this module's header
+ * comment — never "perfect reception" or "operative reception". Two
+ * planets each hosting the other by dignity does not, on its own,
+ * settle whether that pairing perfects in the judgment sense (which
+ * would additionally require aspect/application data this project has
+ * not yet implemented). `isMutual: true` here means only "the
+ * directional dignity relationship holds in both directions."
  * @param {Array<{receiver:string, received:string, types:string[]}>} matrix
  * @returns {Array<{planetA:string, planetB:string, aReceivesB:{types:string[]}, bReceivesA:{types:string[]}, isMutual:true}>}
  */
