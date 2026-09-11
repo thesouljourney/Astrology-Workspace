@@ -221,3 +221,9 @@ th {
   white-space: nowrap;
   vertical-align: top;
 }
+
+.planet-detail h4 {
+  margin: 12px 0 4px;
+  font-size: 0.85rem;
+  color: #555;
+}

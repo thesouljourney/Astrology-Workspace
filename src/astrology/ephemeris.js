@@ -134,7 +134,7 @@ export function calculateChart(input) {
     points,
   };
 
-  chart.classical = buildClassicalChart(chart);
+  chart.classical = buildClassicalChart({ chart, astroTime, latitude, longitude });
 
   return chart;
 }

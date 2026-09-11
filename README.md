@@ -5,9 +5,10 @@ to any other project — it has its own codebase, its own dependencies, and
 no shared code, credentials, or services with anything else.
 
 **Status:** Phase 1 (core Tropical Western calculation engine), Phase 2
-(the 26-point Modern Western data model), and Phase 3A (Classical
-essential dignity rule layer — see §10) are implemented. No interpretation,
-no AI, no Vedic/accidental-dignity/aspect systems yet.
+(the 26-point Modern Western data model), Phase 3A (Classical essential
+dignity rule layer), and Phase 3B (Classical sect & planetary condition
+— see §10/§11) are implemented. No interpretation, no AI, no Vedic/
+accidental-dignity/aspect systems yet.
 
 ---
 
@@ -438,13 +439,85 @@ five positive dignities active (Detriment/Fall do not by themselves
 determine peregrine status). `immediateDispositor` is returned per planet
 (dispositor chains are not implemented — future phase).
 
-Not implemented yet, by design (see the Phase 3A report for the full
-list): accidental dignity, angularity scoring, combustion/cazimi/under the
-beams, hayz, almuten, reception, dispositor chains, aspects, Vedic
-astrology, transits, progressions.
+Not implemented yet as of Phase 3A, by design: accidental dignity,
+angularity scoring, combustion/cazimi/under the beams, hayz, almuten,
+reception, dispositor chains, aspects, Vedic astrology, transits,
+progressions. (Combustion/cazimi/under the beams were added in Phase 3B —
+see §11.)
 
 Zero new dependencies, zero runtime API/network calls — pure local rule
 evaluation over already-computed data.
+
+---
+
+## 11. Phase 3B: Classical Sect & Planetary Condition
+
+Reports **technical condition only** — no accidental dignity score, no
+interpretation. Adds `condition` to each of the seven traditional
+planets' `chart.classical.planets[i]` entries, alongside (never replacing)
+the Phase 3A `dignity` data.
+
+**Chart sect**: reused, not recalculated — read from the same
+already-computed Part of Fortune point Phase 3A uses (ultimately the
+Sun's real astronomical altitude, never AM/PM).
+
+**Planetary sect family**: Sun/Jupiter/Saturn fixed diurnal,
+Moon/Venus/Mars fixed nocturnal, Mercury variable (see below).
+`isOfSect` means only "this planet's sect family matches the chart's
+sect" — it deliberately does **not** require correct hemisphere,
+masculine/feminine sign, or any other Hayz condition (Hayz is a distinct,
+unimplemented, future concept — not to be confused with this).
+
+**Mercury's sect** follows its solar phase, not a fixed family — documented
+in full in `src/astrology/classical/mercurySect.js`: the signed elongation
+`((mercuryLon - sunLon + 540) % 360) - 180` is computed (correctly
+handling the 0/360 wraparound); negative means Mercury trails the Sun in
+zodiacal longitude (oriental, rises before the Sun, morning star, this
+project's convention: diurnal); positive means occidental (evening star,
+nocturnal). Cross-checked during development against the traditional
+definition ("oriental of the Sun" = positioned west of the Sun at a lower
+effective zodiacal longitude, because lower-longitude objects rise
+first) — confirmed by two independent traditional-astrology sources.
+
+**Solar condition** (cazimi/combust/under the beams/free), per William
+Lilly's *Christian Astrology* (1647), cross-checked against two
+independent sources (a modern learn-astrology summary and the Skyscript
+astrological glossary), both agreeing with Lilly's original figures:
+
+```
+Cazimi:          <= 0 deg 17'            (this project's exact convention)
+Combust:         >  0 deg 17'  and <= 8 deg 30'
+Under the Beams: >  8 deg 30'  and <= 17 deg
+Free from Beams: >  17 deg
+```
+
+**Known historical variation, documented, not silently merged**: some
+sources cite the Cazimi orb as 17'30" (half the Sun's mean apparent
+diameter) rather than a flat 17'. This project uses exactly 17'00" as its
+stated convention — the 17'30" variant is real but not used here. Any
+future change to these thresholds must be a deliberate, documented one.
+
+**Motion/retrograde**: reused verbatim from the already-verified Phase 1
+`speedDegPerDay`/`retrograde` — never recalculated.
+
+**Station status**: investigated, not implemented. The existing
+astronomy layer does provide a reliable instantaneous longitudinal speed
+(already exposed as `condition.motion.longitudeSpeed`), but this project
+found no single sourced, agreed-upon threshold for calling a planet
+"stationary" (real ephemeris programs vary this by planet and by
+context) during the time available, so **no `isStationary` flag is
+invented**. The raw speed is stored so a future phase can add this once
+a specific, cited method is chosen — consistent with the project's
+"do not invent thresholds" rule.
+
+**Above/below horizon**: real geometric altitude, not house number.
+Computed per-planet via `astronomy-engine`'s own `Equator()` (true
+right ascension/declination of date — not an ecliptic-latitude=0
+shortcut, since most planets have non-negligible ecliptic latitude) and
+`Horizon()`, the same transform already relied upon and verified
+elsewhere in this codebase (Part of Fortune's sect, Vertex, East Point).
+
+Zero new dependencies, zero network calls.
 
 ---
 
