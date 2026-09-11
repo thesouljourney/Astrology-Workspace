@@ -12,6 +12,8 @@ import { computePlanetaryCondition } from "./planetaryCondition.js";
 import { computeOperationalCondition } from "./accidentalCondition.js";
 import { SPEED_CONVENTION } from "./rules/planetarySpeed.js";
 import { computeSectConditionDetail } from "./hayzHalb.js";
+import { computeDispositorChain, buildImmediateDispositor } from "./dispositorChain.js";
+import { computeReceptionMatrix, getReceptionForPlanet, computeMutualReceptions } from "./reception.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -24,6 +26,9 @@ export const CLASSICAL_META = {
   // gender. Hayz therefore implies Halb (not mutually exclusive) — see
   // the doc comment in hayzHalb.js for the sourced variance disclosure.
   hayzHalbConvention: "traditional_halb_base_hayz_full",
+  // Reception through the five positive essential dignities only
+  // (domicile/exaltation/triplicity/term/face) — see reception.js.
+  receptionConvention: "traditional_five_positive_dignities",
 };
 
 /**
@@ -38,6 +43,18 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
   const partOfFortune = chart.points.find((p) => p.id === "partOfFortune");
   const sect = partOfFortune.meta.sect;
   const sunLongitude = chart.planets.find((pl) => pl.key === "sun").longitude;
+
+  // Actual chart placements of the seven traditional planets, reused for
+  // both the dispositor-chain traversal and the reception matrix — no
+  // planet position is looked up a second time independently.
+  const signByPlanet = {};
+  const placements = TRADITIONAL_PLANETS.map((key) => {
+    const p = chart.planets.find((pl) => pl.key === key);
+    signByPlanet[key] = p.sign.key;
+    return { planet: key, sign: p.sign.key, degreeInSign: p.degreeInSign };
+  });
+  const receptionMatrix = computeReceptionMatrix(placements, sect);
+  const mutualReceptions = computeMutualReceptions(receptionMatrix);
 
   const planets = TRADITIONAL_PLANETS.map((key) => {
     const p = chart.planets.find((pl) => pl.key === key);
@@ -84,12 +101,21 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
       altitudeDegrees: condition.horizon.altitude,
     });
 
-    return { ...dignityResult, condition, operationalCondition, sectConditionDetail };
+    const dispositor = {
+      immediate: buildImmediateDispositor({ planetKey: key, sign: p.sign.key }),
+      chain: computeDispositorChain(key, signByPlanet),
+    };
+
+    const reception = getReceptionForPlanet(receptionMatrix, key);
+
+    return { ...dignityResult, condition, operationalCondition, sectConditionDetail, dispositor, reception };
   });
 
   return {
     meta: CLASSICAL_META,
     sect,
     planets,
+    receptionMatrix,
+    mutualReceptions,
   };
 }

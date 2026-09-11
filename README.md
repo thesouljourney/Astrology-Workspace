@@ -705,6 +705,119 @@ this revision).
 
 ---
 
+## 14. Phase 3E: Dispositor, Reception & Mutual Reception
+
+A traditional relationship layer on top of Phase 3A's locked dignity
+tables — **rule logic only**, no new astronomical calculation, no new
+rulership/triplicity/term/face table, no score. Adds `dispositor` and
+`reception` to each of the seven traditional planets in
+`chart.classical.planets`, plus `chart.classical.receptionMatrix` and
+`chart.classical.mutualReceptions`.
+
+**Direction** (cross-checked against Wikipedia's "Reception (astrology)"
+and Kerykeion's traditional-reception reference, consistent with each
+other and with William Lilly's usage): if planet A occupies a sign/degree
+dignified by planet B, **B receives A** — never the reverse. "Sun in
+Libra" → Venus receives the Sun, not "the Sun receives Venus." Confirmed
+for all five dignity types, not domicile alone. Self-reception (a planet
+in its own dignity) is excluded throughout, per the project brief.
+
+**Five dignities carry reception equally** — domicile, exaltation,
+triplicity, term, face — per both sources above plus Skyscript's forum
+consensus; no disagreement found about which dignities count. One
+secondary source (astrolearn.com) suggests some authors require at least
+two active minor dignities (triplicity/term/face) for a minor-only mutual
+reception to be judged "valid." This project's brief explicitly specifies
+not requiring matching or multiple dignity types, so that extra weighting
+is not applied — disclosed here rather than silently omitted (this is a
+practice-weighting nuance, not a disagreement about the core reception
+definition, which is unanimous across all sources checked).
+
+**Triplicity reception reuses Phase 3A's exact sect-dependent
+`activeRuler`** (`rules/triplicity.js`, unchanged) — the same day/night
+Dorothean ruler already used for essential dignity scoring, not a
+separate reception-specific triplicity system.
+
+**Immediate dispositor** (`dispositorChain.js`): traditional domicile
+rulership only, reusing `getDispositor()` from the locked
+`rules/rulership.js` — e.g. Scorpio → Mars, Aquarius → Saturn, Pisces →
+Jupiter, never Pluto/Uranus/Neptune.
+
+**Dispositor chain**: walks each successive dispositor's own *actual*
+chart placement (not an abstract rulership graph) until a planet
+disposits itself (`terminationType: "self_dispositor"`, `finalDispositor`
+set) or a previously-visited planet recurs (`"loop"`,
+`finalDispositor: null` — a dispositor loop, including the classic
+"two planets in each other's domicile" case, is a legitimate structural
+result, not an error). A visited-set check and the fixed 7-planet set
+guarantee termination within at most 8 steps; a third `"unknown"`
+termination type is kept only as a structurally-unreachable defensive
+fallback, per the project brief's three-type contract.
+
+**Reception matrix** (`reception.js`): all 42 ordered non-self pairs
+among the seven traditional planets, each with the (possibly empty) list
+of dignity types through which the receiver receives the received
+planet. `receives`/`receivedBy` on each planet are inverse views of this
+same matrix (receives = planets **this** planet receives; receivedBy =
+planets that receive **this** planet) — verified by test to be exact
+inverses.
+
+**Mutual reception**: computed per unordered pair, never assumed — A
+receives B and B receives A may be through the same dignity or different
+ones (not required to match, per the brief).
+
+**Mercury** is treated exactly like the other six planets — reception
+depends on dignity rulership only; `getDignityRulersAt()`'s signature
+carries no sect-family/oriental-occidental parameter at all, so there is
+no code path through which Mercury's Phase 3B sect status could leak in.
+
+**No score, no negative reception, no `receptionLevel`** anywhere in this
+module (Parts H/I/J) — verified by test; only the five positive dignity
+types ever appear as a reception type.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N 102.9325°E,
+Placidus — chart sect: **night**) — computed from the rules, not assumed
+in advance. A structural finding specific to this chart: **no traditional
+planet sits in its own domicile**, so every one of the seven dispositor
+chains terminates in the same loop — the Sun (Scorpio) and Mars (Leo)
+mutually disposit each other:
+
+| Planet  | Sign     | Immediate Dispositor | Chain Termination | Final Dispositor |
+|---------|----------|-----------------------|--------------------|-------------------|
+| Sun     | Scorpio  | Mars                  | Loop (Sun↔Mars)    | None              |
+| Moon    | Gemini   | Mercury               | Loop (Sun↔Mars)    | None              |
+| Mercury | Scorpio  | Mars                  | Loop (Sun↔Mars)    | None              |
+| Venus   | Scorpio  | Mars                  | Loop (Sun↔Mars)    | None              |
+| Mars    | Leo      | Sun                   | Loop (Sun↔Mars)    | None              |
+| Jupiter | Scorpio  | Mars                  | Loop (Sun↔Mars)    | None              |
+| Saturn  | Pisces   | Jupiter               | Loop (Sun↔Mars)    | None              |
+
+Complete mutual-reception list for this chart — four pairs, all emerging
+from the calculation, none targeted in advance:
+
+| Pair            | A Receives B         | B Receives A            |
+|-----------------|-----------------------|---------------------------|
+| Sun ↔ Mars      | Domicile              | Domicile, Triplicity      |
+| Mercury ↔ Mars  | Term                  | Domicile, Triplicity      |
+| Mars ↔ Jupiter  | Domicile, Triplicity  | Triplicity                |
+| Jupiter ↔ Saturn| Domicile              | Term                      |
+
+Mars also receives Venus through all four dignity types simultaneously
+(domicile, triplicity, term, and face — Venus sits at 2°39′ Scorpio,
+inside Mars's own term and face bounds as well as ruling the sign and
+being the active night triplicity ruler), demonstrating that multiple
+simultaneous reception types are preserved rather than collapsed.
+
+Stored metadata (`chart.classical.meta`, existing keys preserved):
+`receptionConvention: "traditional_five_positive_dignities"`,
+`rulershipSystem`, `triplicitySystem`, `termSystem`, `faceSystem`
+(all unchanged from Phase 3A).
+
+Zero new dependencies, zero network calls. All 209 tests pass (184
+carried over from Phase 1–3D unchanged, plus 25 new Phase 3E tests).
+
+---
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```

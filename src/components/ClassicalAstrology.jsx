@@ -59,6 +59,34 @@ const SIGN_GENDER_LABEL = {
   feminine: "Feminine｜阴性",
 };
 
+const DIGNITY_TYPE_LABEL = {
+  domicile: "Domicile｜主宰",
+  exaltation: "Exaltation｜擢升",
+  triplicity: "Triplicity｜三分性",
+  term: "Term｜界",
+  face: "Face｜外观",
+};
+
+function planetLabel(key) {
+  const name = PLANET_NAMES[key];
+  return name ? `${name.symbol} ${name.en}` : key;
+}
+
+function formatReceptionList(entries) {
+  if (entries.length === 0) return "None｜无";
+  return entries.map((e) => `${planetLabel(e.planet)} — ${e.types.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ")}`).join("; ");
+}
+
+function formatDispositorChain(chain) {
+  return chain.map(planetLabel).join(" → ");
+}
+
+const TERMINATION_TYPE_LABEL = {
+  self_dispositor: "Self-Dispositor｜自主行星",
+  loop: "Loop｜循环",
+  unknown: "Unknown｜未知",
+};
+
 function speedLabel(speed) {
   if (speed.status === null) return "Withheld｜未定 (no agreed reference)";
   return SPEED_STATUS_LABEL[speed.status];
@@ -70,6 +98,8 @@ function PlanetDetail({ p }) {
   const c = p.condition;
   const o = p.operationalCondition;
   const s = p.sectConditionDetail;
+  const disp = p.dispositor;
+  const rec = p.reception;
   return (
     <details className="planet-detail">
       <summary>
@@ -281,6 +311,36 @@ function PlanetDetail({ p }) {
           </tr>
         </tbody>
       </table>
+
+      <h4>Dispositor & Reception｜定位星与接纳</h4>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Immediate Dispositor｜直接定位星</td>
+            <td>{planetLabel(disp.immediate.ruledBy)}</td>
+          </tr>
+          <tr>
+            <td>Dispositor Chain｜定位星链</td>
+            <td>{formatDispositorChain(disp.chain.chain)}</td>
+          </tr>
+          <tr>
+            <td>Chain Termination｜链终止方式</td>
+            <td>{TERMINATION_TYPE_LABEL[disp.chain.terminationType]}</td>
+          </tr>
+          <tr>
+            <td>Final Dispositor｜最终定位星</td>
+            <td>{disp.chain.finalDispositor ? planetLabel(disp.chain.finalDispositor) : "None｜无"}</td>
+          </tr>
+          <tr>
+            <td>Receives｜接纳</td>
+            <td>{formatReceptionList(rec.receives)}</td>
+          </tr>
+          <tr>
+            <td>Received By｜被接纳</td>
+            <td>{formatReceptionList(rec.receivedBy)}</td>
+          </tr>
+        </tbody>
+      </table>
     </details>
   );
 }
@@ -489,6 +549,67 @@ export default function ClassicalAstrology({ chart }) {
           })}
         </tbody>
       </table>
+
+      <h3>Dispositor & Reception｜定位星与接纳</h3>
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Planet｜行星</th>
+            <th>Immediate Dispositor｜直接定位星</th>
+            <th>Dispositor Chain｜定位星链</th>
+            <th>Chain Termination｜链终止方式</th>
+            <th>Final Dispositor｜最终定位星</th>
+            <th>Receives｜接纳</th>
+            <th>Received By｜被接纳</th>
+          </tr>
+        </thead>
+        <tbody>
+          {classical.planets.map((p) => {
+            const name = PLANET_NAMES[p.planet];
+            const disp = p.dispositor;
+            const rec = p.reception;
+            return (
+              <tr key={p.planet}>
+                <td>
+                  {name.symbol} {name.en}｜{name.cn}
+                </td>
+                <td>{planetLabel(disp.immediate.ruledBy)}</td>
+                <td>{formatDispositorChain(disp.chain.chain)}</td>
+                <td>{TERMINATION_TYPE_LABEL[disp.chain.terminationType]}</td>
+                <td>{disp.chain.finalDispositor ? planetLabel(disp.chain.finalDispositor) : "None｜无"}</td>
+                <td>{formatReceptionList(rec.receives)}</td>
+                <td>{formatReceptionList(rec.receivedBy)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h3>Mutual Reception｜互容</h3>
+      {classical.mutualReceptions.length === 0 ? (
+        <p>No mutual reception found.｜未发现互容。</p>
+      ) : (
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>Pair｜配对</th>
+              <th>A Receives B｜A 接纳 B</th>
+              <th>B Receives A｜B 接纳 A</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classical.mutualReceptions.map((m) => (
+              <tr key={`${m.planetA}-${m.planetB}`}>
+                <td>
+                  {planetLabel(m.planetA)} ↔ {planetLabel(m.planetB)}
+                </td>
+                <td>{m.aReceivesB.types.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ")}</td>
+                <td>{m.bReceivesA.types.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <h3>Planet Detail｜行星详情</h3>
       {classical.planets.map((p) => (

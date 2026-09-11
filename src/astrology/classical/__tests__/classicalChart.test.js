@@ -22,6 +22,7 @@ describe("Classical chart integration (verification case)", () => {
       faceSystem: "chaldean",
       speedConvention: "william_lilly",
       hayzHalbConvention: "traditional_halb_base_hayz_full",
+      receptionConvention: "traditional_five_positive_dignities",
     });
   });
 
