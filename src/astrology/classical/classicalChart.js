@@ -9,6 +9,7 @@
 
 import { computeEssentialDignity, TRADITIONAL_PLANETS } from "./essentialDignity.js";
 import { computePlanetaryCondition } from "./planetaryCondition.js";
+import { computeOperationalCondition } from "./accidentalCondition.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -54,7 +55,20 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
       longitudeEast: longitude,
     });
 
-    return { ...dignityResult, condition };
+    const operationalCondition = computeOperationalCondition({
+      planetKey: key,
+      house: p.house,
+      longitude: p.longitude,
+      angles: {
+        asc: chart.angles.asc.longitude,
+        mc: chart.angles.mc.longitude,
+        ic: chart.angles.ic.longitude,
+        desc: chart.angles.desc.longitude,
+      },
+      phase3bCondition: condition,
+    });
+
+    return { ...dignityResult, condition, operationalCondition };
   });
 
   return {

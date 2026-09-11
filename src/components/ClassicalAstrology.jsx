@@ -35,10 +35,28 @@ function formatDegMin(deg) {
   return `${d}°${String(m).padStart(2, "0")}′`;
 }
 
+const HOUSE_CLASS_LABEL = {
+  angular: "Angular｜始宫",
+  succedent: "Succedent｜续宫",
+  cadent: "Cadent｜果宫",
+};
+
+const SPEED_STATUS_LABEL = {
+  swift: "Swift｜快速",
+  slow: "Slow｜迟缓",
+  mean: "Mean｜平均",
+};
+
+function speedLabel(speed) {
+  if (speed.status === null) return "Withheld｜未定 (no agreed reference)";
+  return SPEED_STATUS_LABEL[speed.status];
+}
+
 function PlanetDetail({ p }) {
   const name = PLANET_NAMES[p.planet];
   const d = p.dignity;
   const c = p.condition;
+  const o = p.operationalCondition;
   return (
     <details className="planet-detail">
       <summary>
@@ -154,6 +172,55 @@ function PlanetDetail({ p }) {
               {c.horizon.isAboveHorizon ? "Above Horizon｜地平线上" : "Below Horizon｜地平线下"} (altitude{" "}
               {c.horizon.altitude.toFixed(2)}°)
             </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Operational Condition｜行动条件</h4>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>House｜宫位</td>
+            <td>
+              House {o.housePosition.house} — {HOUSE_CLASS_LABEL[o.housePosition.class]}
+            </td>
+          </tr>
+          <tr>
+            <td>Nearest Angle｜最近四轴</td>
+            <td>
+              {o.angleProximity.nearestAngle.angle} — {formatDegMin(o.angleProximity.nearestAngle.distanceDegrees)}
+            </td>
+          </tr>
+          <tr>
+            <td>Distance to Angles｜距四轴角距</td>
+            <td>
+              ASC {formatDegMin(o.angleProximity.asc)} · IC {formatDegMin(o.angleProximity.ic)} · DSC{" "}
+              {formatDegMin(o.angleProximity.dsc)} · MC {formatDegMin(o.angleProximity.mc)}
+            </td>
+          </tr>
+          <tr>
+            <td>Motion｜运行</td>
+            <td>{o.motion.direction === "retrograde" ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+          </tr>
+          <tr>
+            <td>Speed｜速度</td>
+            <td>
+              {speedLabel(o.speed)}
+              {o.speed.referenceMeanSpeed != null &&
+                ` — ${o.speed.absoluteSpeed.toFixed(4)}°/day vs mean ${o.speed.referenceMeanSpeed.toFixed(4)}°/day`}
+            </td>
+          </tr>
+          <tr>
+            <td>Solar｜太阳状态</td>
+            <td>{o.solar ? SOLAR_CONDITION_LABEL[o.solar.status] : "—"}</td>
+          </tr>
+          <tr>
+            <td>Sect｜宗派</td>
+            <td>{o.sect.isOfSect ? "Of Sect｜合乎宗派" : "Out of Sect｜不合宗派"}</td>
+          </tr>
+          <tr>
+            <td>Horizon｜地平线</td>
+            <td>{o.horizon.hemisphere === "above_horizon" ? "Above Horizon｜地平线上" : "Below Horizon｜地平线下"}</td>
           </tr>
         </tbody>
       </table>
@@ -284,6 +351,44 @@ export default function ClassicalAstrology({ chart }) {
                 <td>{c.solar ? formatDegMin(c.solar.elongation) : "—"}</td>
                 <td>{c.horizon.altitude.toFixed(2)}°</td>
                 <td>{c.horizon.isAboveHorizon ? "Above｜地平线上" : "Below｜地平线下"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h3>Operational Condition｜行动条件</h3>
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Planet｜行星</th>
+            <th>House Class｜宫位类别</th>
+            <th>Nearest Angle｜最近四轴</th>
+            <th>Motion｜运行</th>
+            <th>Speed｜速度</th>
+            <th>Solar｜太阳</th>
+            <th>Sect｜宗派</th>
+          </tr>
+        </thead>
+        <tbody>
+          {classical.planets.map((p) => {
+            const name = PLANET_NAMES[p.planet];
+            const o = p.operationalCondition;
+            return (
+              <tr key={p.planet}>
+                <td>
+                  {name.symbol} {name.en}｜{name.cn}
+                </td>
+                <td>
+                  {o.housePosition.house} — {o.housePosition.class}
+                </td>
+                <td>
+                  {o.angleProximity.nearestAngle.angle} {formatDegMin(o.angleProximity.nearestAngle.distanceDegrees)}
+                </td>
+                <td>{o.motion.direction === "retrograde" ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+                <td>{o.speed.status === null ? "—" : SPEED_STATUS_LABEL[o.speed.status]}</td>
+                <td>{o.solar ? SOLAR_CONDITION_LABEL[o.solar.status] : "—"}</td>
+                <td>{mark(o.sect.isOfSect)}</td>
               </tr>
             );
           })}

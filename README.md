@@ -6,9 +6,9 @@ no shared code, credentials, or services with anything else.
 
 **Status:** Phase 1 (core Tropical Western calculation engine), Phase 2
 (the 26-point Modern Western data model), Phase 3A (Classical essential
-dignity rule layer), and Phase 3B (Classical sect & planetary condition
-— see §10/§11) are implemented. No interpretation, no AI, no Vedic/
-accidental-dignity/aspect systems yet.
+dignity), Phase 3B (Classical sect & planetary condition), and Phase 3C
+(accidental/operational condition — see §10-12) are implemented. No
+interpretation, no AI, no Vedic/Hayz/reception/aspect systems yet.
 
 ---
 
@@ -516,6 +516,66 @@ right ascension/declination of date — not an ecliptic-latitude=0
 shortcut, since most planets have non-negligible ecliptic latitude) and
 `Horizon()`, the same transform already relied upon and verified
 elsewhere in this codebase (Part of Fortune's sect, Vertex, East Point).
+
+Zero new dependencies, zero network calls.
+
+---
+
+## 12. Phase 3C: Accidental Condition & Operational Strength
+
+"How much practical ability does the planet have to act?" — reports
+technical facts only, **no combined score**. `operationalCondition` on
+each of the seven traditional planets adds:
+
+- **House angularity** (`housePosition`): angular (1/4/7/10), succedent
+  (2/5/8/11), or cadent (3/6/9/12), derived purely from the already-
+  verified `planet.house` — no new house-placement logic, no strength
+  value assigned.
+- **Angle proximity** (`angleProximity`): shortest zodiacal distance to
+  ASC/IC/DSC/MC (wraparound-safe) plus `nearestAngle` — metadata only; a
+  cadent planet near an angle is never auto-promoted to angular, and no
+  "angular orb" is defined anywhere in this project.
+- **Speed** (`speed`): see below.
+- **Motion, solar, sect, horizon**: reused verbatim from Phase 3B
+  (`condition.motion`/`.solar`/`.sect`/`.horizon`) — nothing recalculated,
+  confirmed by test.
+
+**Planetary speed / swift-slow research and decision**: cross-checked
+against William Lilly's *Christian Astrology* (1647, Ch. XIII) and a
+second modern source (Anthony Louis, citing Lilly directly) for Sun,
+Moon, Mars, Jupiter, Saturn — consistent mean daily motions found:
+
+```
+Moon:     13 deg 10' 36" / day       Jupiter:  0 deg 04' 59" / day
+Sun:       0 deg 59' 08" / day       Saturn:   0 deg 02' 01" / day
+Mars:      0 deg 31' 27" / day
+```
+
+Method (Lilly's, as corroborated): direct comparison of *absolute* daily
+speed against the mean — swift if above, slow if below, **no invented
+tolerance band**. Absolute value is used specifically so retrograde is
+never auto-converted to "slow" — `motion.direction` and `speed.status`
+are always reported as separate facts (verified by test with a synthetic
+fast-retrograde case classified "swift").
+
+**Mercury/Venus — a genuine sourced disagreement, resolved by explicit
+decision, not silently**: Lilly assigns both the Sun's rate (59'08",
+the "triune system" convention). A second historical author, Ivy
+Goldstein-Jacobson, assigns each its own faster rate instead — though a
+modern secondary review separately flags her specific transcribed
+figures as possibly erroneous. This was reported to the project owner
+rather than resolved unilaterally; **the owner chose Lilly's convention**,
+so this project uses 59'08"/day for both, matching Lilly's original table
+and most modern traditional software's default. The alternative is
+documented in `rules/planetarySpeed.js` but not used.
+
+**Stationary status**: still not implemented (Phase 3B's decision stands
+unchanged) — no planet-specific, sourced threshold was found for this
+phase either. Raw `longitudeSpeed` remains available regardless.
+
+No `accidentalScore`, `operationalScore`, `strengthScore`, or
+`totalClassicalScore` exists anywhere — verified by test. Phase 3A's
+`totalEssentialScore` remains the only score in the codebase.
 
 Zero new dependencies, zero network calls.
 
