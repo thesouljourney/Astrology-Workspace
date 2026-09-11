@@ -22,6 +22,12 @@ import {
   REFRANATION_CONVENTION,
 } from "./directPerfection.js";
 import { computePerfectionMechanics, DOCTRINE_STATUS } from "./perfectionMechanics.js";
+import {
+  buildTechnicalSummary,
+  TECHNICAL_SUMMARY_VERSION,
+  TECHNICAL_SUMMARY_TYPE,
+  TECHNICAL_SUMMARY_INTERPRETATION,
+} from "./technicalSummary.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -110,6 +116,12 @@ export const CLASSICAL_META = {
   // from already-computed Phase 3E/3F/3G-A data. Frustration is
   // deliberately deferred — see perfectionMechanics.js.
   ...DOCTRINE_STATUS,
+  // Phase 3H: a normalized aggregation/read layer over everything above
+  // — no new astrology rule, no new score, no interpretation. See
+  // technicalSummary.js.
+  technicalSummaryVersion: TECHNICAL_SUMMARY_VERSION,
+  technicalSummaryType: TECHNICAL_SUMMARY_TYPE,
+  technicalSummaryInterpretation: TECHNICAL_SUMMARY_INTERPRETATION,
 };
 
 /**
@@ -233,6 +245,19 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
     return { ...dignityResult, condition, operationalCondition, sectConditionDetail, dispositor, reception };
   });
 
+  // Phase 3H: normalized evidence/read layer aggregating everything
+  // above (Phase 3A-3G-B) — zero new astronomical or astrological
+  // calculation, purely reorganized for inspection/export.
+  const summary = buildTechnicalSummary({
+    topLevelMeta: chart.meta,
+    sect,
+    meta: CLASSICAL_META,
+    classicalPlanets: planets,
+    aspects,
+    directPerfection,
+    perfectionMechanics,
+  });
+
   return {
     meta: CLASSICAL_META,
     sect,
@@ -242,5 +267,6 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
     aspects,
     directPerfection,
     perfectionMechanics,
+    summary,
   };
 }

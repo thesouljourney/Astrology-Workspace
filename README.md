@@ -1338,6 +1338,113 @@ Translation and a "Candidate" / "Completion Status" distinction for
 Collection — neutral technical language only, no outcome claims. 7 new
 tests (319 total, all passing); zero new production dependencies.
 
+## 18. Phase 3H: Classical Technical Summary & Evidence Layer
+
+**Purpose**: Phase 3A–3G-B each calculate one slice of technical
+evidence. Phase 3H does not calculate anything new — it organizes
+everything already computed into one normalized, traceable evidence
+layer (`chart.classical.summary`) that is easy to inspect, export, and
+later hand to a manual interpretation workspace. It answers "what
+technical evidence has already been calculated?", never "what does this
+mean?"
+
+**This is aggregation, not new doctrine.** `technicalSummary.js` performs
+zero new astronomical calculation and zero new astrology rule
+evaluation. Every field is read from an already-locked upstream result —
+Phase 1 (`chart.meta`), Phase 3A (essential dignity), Phase 3B (planetary
+condition), Phase 3C (operational condition), Phase 3D (Hayz/Halb), Phase
+3E (dispositor & reception), Phase 3F (aspects), Phase 3G-A (direct
+perfection), Phase 3G-B (perfection mechanics) — with only two kinds of
+relabeling, both purely cosmetic and applied uniformly: Phase 3G-A's
+`status` field is exposed as `technicalStatus` (matching Phase 3G-B's own
+name for the same concept), and Phase 3E's `{planet, types}` reception
+entries are exposed as `{otherPlanet, dignityTypes}` for symmetry with
+the aspect/mechanics evidence entries. No value is ever changed by either
+rename. No combined score, no ranking, and no interpretive label
+(`isStrong`/`isBeneficial`/etc.) exists anywhere in this module.
+
+**Three levels** (Part B): `chartOverview` (one neutral overview of every
+convention marker already in `chart.classical.meta`, plus
+`traditionalPlanetsIncluded`), `planets` (one normalized evidence record
+per traditional planet, keyed by lowercase planet name — `identity`,
+`position`, `essentialDignity`, `planetaryCondition`, `operationalCondition`,
+`sectCondition`, `dispositor`, `reception`, `aspects`, `directPerfection`,
+`mechanicsInvolvement`, `technicalFlags`, `provenance`), and
+`relationships` (one record per unique pair of traditional planets —
+`pairId`, `planetA`, `planetB`, `currentAspect`, `reception`,
+`directPerfection`, `interference`, `mechanics`, `provenance`). A
+chart-level `mechanics` rollup (counts + `doctrineStatus`) and
+`unresolvedConventions` sit alongside these three.
+
+**Stable pair IDs** (Part P): `canonicalPlanetPair(a, b)` orders any two
+traditional planets by their fixed index in `TRADITIONAL_PLANETS` — the
+exact same ordering every upstream Phase 3F/3G-A/3G-B module already uses
+internally to build its own pair arrays (`for (i) for (j = i+1)`), never
+an alphabetical sort. This is what makes `"A-B"` and `"B-A"` always
+normalize to one pairId (e.g. `"sun-saturn"`, never `"saturn-sun"` for
+the same pair) — and it is deliberately the same fix as the test-level
+mistake this project already made once, in Phase 3G-B: an override key
+built with `.sort()` (alphabetical) silently failed to match a pair
+object built in `TRADITIONAL_PLANETS` order. Phase 3H's own tests (TEST
+5) assert this order-independence directly, and reuse
+`canonicalPlanetPair` everywhere a pair needs to be looked up or
+compared — never a second, competing ordering.
+
+**Provenance** (Part Q): every planet record, every relationship record,
+the chart overview, and the mechanics rollup carry a `provenance` array
+of stable logical labels (`phase_1_astronomical_foundation`,
+`phase_3a_essential_dignity`, `phase_3b_planetary_condition`,
+`phase_3c_operational_condition`, `phase_3d_hayz_halb`,
+`phase_3e_reception`, `phase_3f_aspects`, `phase_3ga_direct_perfection`,
+`phase_3gb_perfection_mechanics`) — never a file path, so the schema
+stays stable even if internal module organization changes later.
+
+**Ambiguity preservation** (Part R): `unresolvedConventions` is *derived*
+from `chart.classical.meta`, not hard-coded — a small topic→meta-key map
+is filtered against a fixed set of "this is a deferral/ambiguity marker"
+values (`requires_historical_rule`, `deferred`,
+`deferred_due_to_historical_variance`, `not_yet_evaluated`), so a
+convention that a future phase actually resolves automatically drops off
+this list on its own, without anyone needing to remember to update it.
+In the verification chart this currently yields exactly four entries:
+sign ingress before perfection, reception qualification, Frustration, and
+Dexter/Sinister. Genuinely settled conventions (e.g. refranation's
+`direct_to_retrograde_application_reversal`) never appear here.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus) totals, generated from the live pipeline, never
+hard-coded: exactly 7 planet evidence records, exactly 21 relationship
+records, 9 aspects within orb, 5 direct-perfection candidates, 3
+translations, 2 collections (`collectionCompletionStatusCounts:
+{both_legs_perfect: 0, one_leg_does_not_perfect: 1,
+requires_historical_rule: 1}`), 2 prohibitions, 2 raw interference
+events, 2 refranating legs, and 4 unresolved conventions — every one of
+these reconciles exactly with the corresponding Phase 3F/3G-A/3G-B totals
+already reported in §15–17.
+
+New `chart.classical.meta` fields: `technicalSummaryVersion:
+"phase_3h_v1"`, `technicalSummaryType: "normalized_evidence_layer"`,
+`technicalSummaryInterpretation: "none"`.
+
+UI: a new "Technical Summary｜技术总览" section (Chart Overview, seven
+compact Planet Evidence cards, 21 collapsible Relationship Evidence
+cards, and an Unresolved Conventions list) was added inside "Classical
+Astrology｜古典占星", additional to — not replacing — every existing
+detailed section. Bilingual major headings/labels follow the established
+per-section pattern used throughout this project; a full bilingual
+terminology refactor is explicitly out of scope for this phase and is
+left for a later, dedicated phase, per the project brief.
+
+**Export readiness**: the whole summary is plain, JSON-serializable data
+— no functions, no React elements, no class instances, no circular
+references (confirmed by dedicated tests). Excel export itself is not
+built in this phase.
+
+Zero new production dependencies, zero network calls (the temporary,
+dev-only, immediately-uninstalled Playwright UI check follows the same
+established pattern as every prior phase). All 354 tests pass (319
+carried over from Phase 1–3G-B unchanged, plus 35 new Phase 3H tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

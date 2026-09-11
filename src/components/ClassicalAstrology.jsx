@@ -106,6 +106,17 @@ const COLLECTION_COMPLETION_STATUS_LABEL = {
   requires_historical_rule: "Requires Historical Rule｜需历史惯例判定",
 };
 
+const UNRESOLVED_TOPIC_LABEL = {
+  sign_ingress_before_perfection: "Sign Ingress Before Perfection｜成相前换座",
+  reception_qualification: "Reception Qualification｜接纳是否成立判定",
+  frustration: "Frustration｜挫败",
+  dexter_sinister: "Dexter / Sinister｜右方 / 左方相位",
+  refranation: "Refranation｜反相",
+  translation: "Translation of Light｜传光",
+  collection: "Collection of Light｜聚光",
+  prohibition: "Prohibition｜阻碍",
+};
+
 function formatSignedSpeed(speed) {
   return `${speed >= 0 ? "+" : ""}${speed.toFixed(4)}°/day`;
 }
@@ -407,12 +418,261 @@ function PlanetDetail({ p }) {
   );
 }
 
+function planetCard(key, summary) {
+  const name = PLANET_NAMES[key];
+  const p = summary.planets[key];
+  const pos = p.position;
+  const ed = p.essentialDignity;
+  const sect = p.sectCondition;
+  const op = p.operationalCondition;
+
+  const activeDignities = [
+    ed.domicile.active && "Domicile｜主宰",
+    ed.exaltation.active && "Exaltation｜擢升",
+    ed.triplicity.active && "Triplicity｜三分性",
+    ed.term.active && "Term｜界",
+    ed.face.active && "Face｜外观",
+    ed.detriment.active && "Detriment｜落陷",
+    ed.fall.active && "Fall｜陷落",
+    ed.peregrine && "Peregrine｜漂泊",
+  ].filter(Boolean);
+
+  const sectFlags = [
+    sect.isOfSect && "Of Sect｜合乎宗派",
+    sect.hayz.isHayz && "Hayz｜合宜",
+    sect.halb.isHalb && "Halb",
+    !sect.isOfSect && "Out of Sect｜不合宗派",
+  ].filter(Boolean);
+
+  return (
+    <details className="planet-detail" key={key}>
+      <summary>
+        {name.symbol} {name.en}｜{name.cn} — {signLabel(pos.sign)} {formatDMS(pos.degreeInSign)}, House {pos.house}
+        {pos.retrograde ? " — Retrograde｜逆行" : ""}
+      </summary>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Essential｜本质尊贵</td>
+            <td>
+              {activeDignities.length > 0 ? activeDignities.join(", ") : "None active｜均未激活"} — Score{" "}
+              {ed.totalEssentialScore}
+            </td>
+          </tr>
+          <tr>
+            <td>Sect｜宗派</td>
+            <td>{sectFlags.join(", ")}</td>
+          </tr>
+          <tr>
+            <td>Operational｜行动条件</td>
+            <td>
+              {HOUSE_CLASS_LABEL[op.housePosition.class]}, {op.speed.status === null ? "—" : SPEED_STATUS_LABEL[op.speed.status]}
+            </td>
+          </tr>
+          <tr>
+            <td>Dispositor｜定位星</td>
+            <td>{planetLabel(p.dispositor.immediateDispositor)}</td>
+          </tr>
+          <tr>
+            <td>Aspects｜相位</td>
+            <td>
+              {p.aspects.length === 0
+                ? "None within orb｜无相位在容许度内"
+                : p.aspects
+                    .map((a) => `${planetLabel(a.otherPlanet)} ${ASPECT_TYPE_LABEL[a.aspectType]} (${MOTION_STATUS_LABEL[a.motionStatus]})`)
+                    .join("; ")}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+  );
+}
+
+function relationshipCard(r, summary) {
+  const key = `${r.planetA}-${r.planetB}`;
+  const hasMechanics = r.mechanics.translations.length + r.mechanics.collections.length + r.mechanics.prohibitions.length > 0;
+  return (
+    <details className="planet-detail" key={key}>
+      <summary>
+        {planetLabel(r.planetA)} ↔ {planetLabel(r.planetB)}
+      </summary>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Current Aspect｜当前相位</td>
+            <td>
+              {r.currentAspect.type === null
+                ? "None (out of orb / no aspect)｜无相位（超出容许度）"
+                : `${ASPECT_TYPE_LABEL[r.currentAspect.type]} — ${MOTION_STATUS_LABEL[r.currentAspect.motionStatus]}`}
+            </td>
+          </tr>
+          <tr>
+            <td>Reception｜接纳</td>
+            <td>
+              {planetLabel(r.planetA)} receives {planetLabel(r.planetB)}:{" "}
+              {r.reception.aReceivesB.length > 0 ? r.reception.aReceivesB.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ") : "None｜无"}
+              ; {planetLabel(r.planetB)} receives {planetLabel(r.planetA)}:{" "}
+              {r.reception.bReceivesA.length > 0 ? r.reception.bReceivesA.map((t) => DIGNITY_TYPE_LABEL[t]).join(", ") : "None｜无"}
+            </td>
+          </tr>
+          <tr>
+            <td>Direct Perfection｜直接成相</td>
+            <td>{r.directPerfection.isCandidate ? DIRECT_PERFECTION_STATUS_LABEL[r.directPerfection.technicalStatus] : "Not a Candidate｜非候选"}</td>
+          </tr>
+          <tr>
+            <td>Interference｜干预事件</td>
+            <td>
+              {r.interference.length === 0
+                ? "None｜无"
+                : r.interference
+                    .map((e) => `${planetLabel(e.thirdPlanet)} → ${planetLabel(e.contactedPlanet)} (${ASPECT_TYPE_LABEL[e.aspectType]})`)
+                    .join("; ")}
+            </td>
+          </tr>
+          <tr>
+            <td>Mechanics｜机制</td>
+            <td>
+              {!hasMechanics
+                ? "None｜无"
+                : [
+                    ...r.mechanics.translations.map((t) => `Translation via ${planetLabel(t.translator)}`),
+                    ...r.mechanics.collections.map((c) => `Collection via ${planetLabel(c.collector)} (${COLLECTION_COMPLETION_STATUS_LABEL[c.completionStatus]})`),
+                    ...r.mechanics.prohibitions.map((pr) => `Prohibited by ${planetLabel(pr.prohibitingPlanet)}`),
+                  ].join("; ")}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+  );
+}
+
 export default function ClassicalAstrology({ chart }) {
   const { classical } = chart;
+  const { summary } = classical;
 
   return (
     <section className="classical-astrology">
       <h2>Classical Astrology｜古典占星</h2>
+
+      <h3>Technical Summary｜技术总览</h3>
+      <p className="reception-note">
+        A normalized read layer over everything below — no new rule, no new score, no interpretation｜对以下全部内容的归一化只读汇总层
+        — 无新规则、无新评分、无解读
+      </p>
+
+      <h4>A. Chart Overview｜命盘总览</h4>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Zodiac｜黄道</td>
+            <td>{summary.chartOverview.zodiacType}</td>
+          </tr>
+          <tr>
+            <td>House System｜宫位制</td>
+            <td>{summary.chartOverview.houseSystem}</td>
+          </tr>
+          <tr>
+            <td>Chart Sect｜命盘昼夜</td>
+            <td>{summary.chartOverview.chartSect === "day" ? "Day｜日间盘" : "Night｜夜间盘"}</td>
+          </tr>
+          <tr>
+            <td>Rulership｜守护关系</td>
+            <td className="meta-cell">{summary.chartOverview.rulershipSystem}</td>
+          </tr>
+          <tr>
+            <td>Triplicity｜三分性</td>
+            <td className="meta-cell">{summary.chartOverview.triplicitySystem}</td>
+          </tr>
+          <tr>
+            <td>Terms｜界</td>
+            <td className="meta-cell">{summary.chartOverview.termSystem}</td>
+          </tr>
+          <tr>
+            <td>Faces｜外观</td>
+            <td className="meta-cell">{summary.chartOverview.faceSystem}</td>
+          </tr>
+          <tr>
+            <td>Speed Convention｜速度惯例</td>
+            <td className="meta-cell">{summary.chartOverview.speedConvention}</td>
+          </tr>
+          <tr>
+            <td>Hayz/Halb Convention｜合宜惯例</td>
+            <td className="meta-cell">{summary.chartOverview.hayzHalbConvention}</td>
+          </tr>
+          <tr>
+            <td>Reception Convention｜接纳惯例</td>
+            <td className="meta-cell">{summary.chartOverview.receptionConvention}</td>
+          </tr>
+          <tr>
+            <td>Reception Qualification｜接纳判定</td>
+            <td className="meta-cell">{summary.chartOverview.receptionQualification}</td>
+          </tr>
+          <tr>
+            <td>Aspect System｜相位系统</td>
+            <td className="meta-cell">{summary.chartOverview.aspectSystem}</td>
+          </tr>
+          <tr>
+            <td>Aspect Orb Convention｜容许度惯例</td>
+            <td className="meta-cell">{summary.chartOverview.aspectOrbConvention}</td>
+          </tr>
+          <tr>
+            <td>Direct Perfection Method｜直接成相方法</td>
+            <td className="meta-cell">{summary.chartOverview.directPerfectionMethod}</td>
+          </tr>
+          <tr>
+            <td>Sign Ingress Convention｜换座惯例</td>
+            <td className="meta-cell">{summary.chartOverview.signIngressConvention}</td>
+          </tr>
+          <tr>
+            <td>Refranation Convention｜反相惯例</td>
+            <td className="meta-cell">{summary.chartOverview.refranationConvention}</td>
+          </tr>
+          <tr>
+            <td>Translation Convention｜传光惯例</td>
+            <td className="meta-cell">{summary.chartOverview.translationConvention}</td>
+          </tr>
+          <tr>
+            <td>Collection Convention｜聚光惯例</td>
+            <td className="meta-cell">{summary.chartOverview.collectionConvention}</td>
+          </tr>
+          <tr>
+            <td>Prohibition Convention｜阻碍惯例</td>
+            <td className="meta-cell">{summary.chartOverview.prohibitionConvention}</td>
+          </tr>
+          <tr>
+            <td>Frustration｜挫败</td>
+            <td className="meta-cell">{summary.chartOverview.frustrationConvention}</td>
+          </tr>
+          <tr>
+            <td>Traditional Planets Included｜纳入的传统行星</td>
+            <td>{summary.chartOverview.traditionalPlanetsIncluded.map(planetLabel).join(", ")}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>B. Planet Evidence｜行星证据</h4>
+      {Object.keys(summary.planets).map((key) => planetCard(key, summary))}
+
+      <h4>C. Relationship Evidence｜配对关系证据</h4>
+      {summary.relationships.map((r) => relationshipCard(r, summary))}
+
+      <h4>D. Unresolved Conventions｜尚未锁定的历史规则</h4>
+      {summary.unresolvedConventions.length === 0 ? (
+        <p>None currently unresolved.｜目前无尚未锁定的规则。</p>
+      ) : (
+        <table className="detail-table">
+          <tbody>
+            {summary.unresolvedConventions.map((u) => (
+              <tr key={u.topic}>
+                <td>{UNRESOLVED_TOPIC_LABEL[u.topic] ?? u.topic}</td>
+                <td className="meta-cell">{u.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <div className="classical-settings">
         <h3>Classical Settings｜古典设定</h3>

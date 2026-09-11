@@ -40,6 +40,9 @@ describe("Classical chart integration (verification case)", () => {
       prohibitionConvention: "lilly_third_planet_interposes_before_perfection",
       frustrationConvention: "deferred_due_to_historical_variance",
       interferenceLayer: "raw_event_sequence",
+      technicalSummaryVersion: "phase_3h_v1",
+      technicalSummaryType: "normalized_evidence_layer",
+      technicalSummaryInterpretation: "none",
     });
   });
 
