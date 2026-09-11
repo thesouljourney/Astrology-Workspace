@@ -12,6 +12,7 @@ import { computePlanetPositions } from "./planets.js";
 import { computeHouseCusps, getHouseForLongitude, SUPPORTED_HOUSE_SYSTEMS } from "./houses.js";
 import { getZodiacSign, normalizeDegrees } from "./zodiac.js";
 import { buildModernWesternPoints } from "./modernWestern.js";
+import { buildClassicalChart } from "./classical/classicalChart.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -116,7 +117,7 @@ export function calculateChart(input) {
     lilithType,
   });
 
-  return {
+  const chart = {
     meta: {
       utcDate,
       utcIso: utcDate.toISOString(),
@@ -132,4 +133,8 @@ export function calculateChart(input) {
     houseCusps,
     points,
   };
+
+  chart.classical = buildClassicalChart(chart);
+
+  return chart;
 }

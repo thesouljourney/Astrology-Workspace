@@ -4,9 +4,10 @@ A private, local-first astrology calculation tool. This is **not** related
 to any other project — it has its own codebase, its own dependencies, and
 no shared code, credentials, or services with anything else.
 
-**Status:** Phase 1 (core Tropical Western calculation engine) and Phase 2
-(the 26-point Modern Western data model) are implemented. No interpretation,
-no AI, no Vedic/Classical/sidereal systems yet — see §7/§9 below.
+**Status:** Phase 1 (core Tropical Western calculation engine), Phase 2
+(the 26-point Modern Western data model), and Phase 3A (Classical
+essential dignity rule layer — see §10) are implemented. No interpretation,
+no AI, no Vedic/accidental-dignity/aspect systems yet.
 
 ---
 
@@ -394,6 +395,56 @@ new network dependency, no new API, of any kind.
 Everything else in Phase 2 (True Node, Mean Node, Part of Fortune's
 day/night sect logic, Vertex, East Point) agreed with real Swiss Ephemeris
 to well under 1 arcminute — most under 3 arcseconds.
+
+---
+
+## 10. Phase 3A: Classical Astrology — Essential Dignity
+
+A **rule layer**, not a second astronomical engine: it consumes the
+already-verified Tropical longitudes from Phase 1/2
+(`src/astrology/planets.js`, `houses.js`) and applies traditional
+dignity/debility rules on top, in `src/astrology/classical/`. Sect
+(day/night) is read from the already-computed Part of Fortune point rather
+than recomputed — there is exactly one sect calculation in the codebase.
+
+Applies **only** to the seven traditional planets (Sun through Saturn) —
+never to Uranus/Neptune/Pluto, asteroids, Lilith, Nodes, Vertex, East
+Point, or Part of Fortune.
+
+**Conventions used** (stored permanently in `chart.classical.meta`, never
+silently changed): Tropical zodiac, traditional domicile rulership,
+Dorothean triplicity (day/night/participating rulers — distinct from
+Ptolemy's simpler scheme and Lilly's Renaissance variant), Egyptian Terms
+(the older Hellenistic bounds table, not the later Ptolemaic revision),
+Chaldean Faces/decans.
+
+**Reference table validation** (per project rule — not relied on from
+memory alone): Egyptian Terms, Dorothean Triplicity, traditional
+exaltation degrees, and Chaldean Faces were each cross-checked during
+development against multiple independent traditional-astrology sources.
+The Egyptian Terms table additionally passed two internal consistency
+checks that a mistranscription would very likely have broken: every sign
+sums to exactly 30°, and the five planets' total degrees across the full
+zodiac (57/79/66/82/76, summing to 360) match an independently-cited
+reference breakdown exactly. No disagreement between sources was found for
+any of the four tables as specifically scoped by this project (Dorothean
+triplicity, Western tropical exaltation degrees, the Egyptian — not
+Ptolemaic — term table, Hellenistic Chaldean faces).
+
+Dignities stack (evaluated independently, never mutually exclusive
+if/else): Domicile +5, Exaltation +4, Triplicity +3 (active sect ruler
+only), Term +2, Face +1, Detriment −5, Fall −4. Peregrine = none of the
+five positive dignities active (Detriment/Fall do not by themselves
+determine peregrine status). `immediateDispositor` is returned per planet
+(dispositor chains are not implemented — future phase).
+
+Not implemented yet, by design (see the Phase 3A report for the full
+list): accidental dignity, angularity scoring, combustion/cazimi/under the
+beams, hayz, almuten, reception, dispositor chains, aspects, Vedic
+astrology, transits, progressions.
+
+Zero new dependencies, zero runtime API/network calls — pure local rule
+evaluation over already-computed data.
 
 ---
 

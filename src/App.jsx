@@ -4,6 +4,7 @@ import { formatDMS } from "./utils/formatDegree.js";
 import { formatHouseLabel } from "./utils/houseLabel.js";
 import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
 import ModernWestern from "./components/ModernWestern.jsx";
+import ClassicalAstrology from "./components/ClassicalAstrology.jsx";
 import "./App.css";
 
 const DEFAULT_INPUT = {
@@ -229,6 +230,7 @@ function App() {
           </table>
 
           <ModernWestern chart={chart} />
+          <ClassicalAstrology chart={chart} />
         </section>
       )}
     </div>

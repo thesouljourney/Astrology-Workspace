@@ -170,3 +170,54 @@ th {
   max-width: 240px;
   overflow-wrap: break-word;
 }
+
+.classical-astrology {
+  margin-top: 40px;
+  border-top: 3px double #333;
+  padding-top: 8px;
+}
+
+.classical-settings {
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+
+.classical-settings table td:first-child {
+  font-weight: 600;
+  color: #444;
+}
+
+.classical-table {
+  font-size: 0.82rem;
+}
+
+.classical-table th,
+.classical-table td {
+  text-align: center;
+  padding: 5px 6px;
+}
+
+.classical-table td:first-child,
+.classical-table th:first-child {
+  text-align: left;
+}
+
+.planet-detail {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.planet-detail summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.detail-table td:first-child {
+  font-weight: 600;
+  color: #444;
+  white-space: nowrap;
+  vertical-align: top;
+}
