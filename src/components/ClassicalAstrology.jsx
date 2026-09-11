@@ -100,6 +100,12 @@ const PERFECTION_TECHNICAL_STATUS_LABEL = {
   requires_historical_rule: "Requires Historical Rule｜需历史惯例判定",
 };
 
+const COLLECTION_COMPLETION_STATUS_LABEL = {
+  both_legs_perfect: "Both Legs Perfect｜双腿均成正相",
+  one_leg_does_not_perfect: "One Leg Interrupted｜一腿中断",
+  requires_historical_rule: "Requires Historical Rule｜需历史惯例判定",
+};
+
 function formatSignedSpeed(speed) {
   return `${speed >= 0 ? "+" : ""}${speed.toFixed(4)}°/day`;
 }
@@ -851,8 +857,9 @@ export default function ClassicalAstrology({ chart }) {
               <th>Translator｜传光者</th>
               <th>Separates From｜出相于</th>
               <th>Applies To｜入相于</th>
-              <th>Separation Exact｜出相正相时刻</th>
-              <th>Application Exact｜入相正相时刻</th>
+              <th>Separation Exact (Past)｜出相正相时刻（过去）</th>
+              <th>Application Exact (Future)｜入相正相时刻（未来）</th>
+              <th>Separating Leg Still Within Orb｜出相仍在容许度内</th>
               <th>Technical Status｜技术性状态</th>
             </tr>
           </thead>
@@ -861,13 +868,17 @@ export default function ClassicalAstrology({ chart }) {
               <tr key={`translation-${i}`}>
                 <td>{planetLabel(t.translator)}</td>
                 <td>
-                  {planetLabel(t.fromPlanet)} ({ASPECT_TYPE_LABEL[t.separatedAspect]})
+                  {planetLabel(t.fromPlanet)} ({ASPECT_TYPE_LABEL[t.separatingLeg.aspectType]})
                 </td>
                 <td>
-                  {planetLabel(t.toPlanet)} ({ASPECT_TYPE_LABEL[t.applyingAspect]})
+                  {planetLabel(t.toPlanet)} ({ASPECT_TYPE_LABEL[t.applyingLeg.aspectType]})
                 </td>
-                <td>{formatUTCTimestamp(t.separationExactitudeTime)}</td>
-                <td>{formatUTCTimestamp(t.applicationExactitudeTime)}</td>
+                <td>{formatUTCTimestamp(t.separatingLeg.previousExactitudeTimestampUTC)}</td>
+                <td>{formatUTCTimestamp(t.applyingLeg.futureExactitudeTimestampUTC)}</td>
+                <td>
+                  {mark(t.separatingLeg.stillWithinOrb)} ({formatDegMin(t.separatingLeg.currentOrbFromExact)} of{" "}
+                  {formatDegMin(t.separatingLeg.allowedOrb)} allowed)
+                </td>
                 <td>{PERFECTION_TECHNICAL_STATUS_LABEL[t.technicalStatus]}</td>
               </tr>
             ))}
@@ -883,11 +894,10 @@ export default function ClassicalAstrology({ chart }) {
           <thead>
             <tr>
               <th>Collector｜聚光者</th>
-              <th>Planet A｜行星A</th>
-              <th>Planet B｜行星B</th>
-              <th>A Exact｜A正相时刻</th>
-              <th>B Exact｜B正相时刻</th>
-              <th>Technical Status｜技术性状态</th>
+              <th>Planet A Leg｜行星A之腿</th>
+              <th>Planet B Leg｜行星B之腿</th>
+              <th>Candidate｜结构性候选</th>
+              <th>Completion Status｜完成状态</th>
             </tr>
           </thead>
           <tbody>
@@ -895,14 +905,23 @@ export default function ClassicalAstrology({ chart }) {
               <tr key={`collection-${i}`}>
                 <td>{planetLabel(c.collector)}</td>
                 <td>
-                  {planetLabel(c.planetA)} ({ASPECT_TYPE_LABEL[c.aToCollectorAspect]})
+                  {planetLabel(c.planetA)} ({ASPECT_TYPE_LABEL[c.aLeg.aspectType]}){" "}
+                  {c.aLeg.exactitudeFound
+                    ? `— exact ${formatUTCTimestamp(c.aLeg.exactitudeTimestampUTC)}`
+                    : c.aLeg.refranation.occurs
+                      ? "— refranates, does not perfect｜反相，不成正相"
+                      : "— does not perfect｜不成正相"}
                 </td>
                 <td>
-                  {planetLabel(c.planetB)} ({ASPECT_TYPE_LABEL[c.bToCollectorAspect]})
+                  {planetLabel(c.planetB)} ({ASPECT_TYPE_LABEL[c.bLeg.aspectType]}){" "}
+                  {c.bLeg.exactitudeFound
+                    ? `— exact ${formatUTCTimestamp(c.bLeg.exactitudeTimestampUTC)}`
+                    : c.bLeg.refranation.occurs
+                      ? "— refranates, does not perfect｜反相，不成正相"
+                      : "— does not perfect｜不成正相"}
                 </td>
-                <td>{formatUTCTimestamp(c.aExactitudeTime)}</td>
-                <td>{formatUTCTimestamp(c.bExactitudeTime)}</td>
-                <td>{PERFECTION_TECHNICAL_STATUS_LABEL[c.technicalStatus]}</td>
+                <td>{mark(c.isCandidate)}</td>
+                <td>{COLLECTION_COMPLETION_STATUS_LABEL[c.completionStatus]}</td>
               </tr>
             ))}
           </tbody>

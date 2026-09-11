@@ -49,7 +49,13 @@ function buildSyntheticAspects(overridesByKey) {
     return {
       planetA: p.planetA,
       planetB: p.planetB,
-      aspect: { type: p.aspectType, exactAngle: p.exactAngle ?? 0 },
+      aspect: {
+        type: p.aspectType,
+        exactAngle: p.exactAngle ?? 0,
+        orbFromExact: p.orbFromExact ?? 0.5,
+        allowedOrb: p.allowedOrb ?? 10,
+        isWithinOrb: p.isWithinOrb ?? true,
+      },
       motion: { status: p.motionStatus },
     };
   });
@@ -79,6 +85,7 @@ function buildSyntheticDirectPerfection(overridesByKey) {
       exactitudeTimestampUTC: p.exactitudeTimestampUTC ?? null,
       ingressBeforeExactitude: p.ingressBeforeExactitude ?? { planetA: false, planetB: false, events: [] },
       motionChangeBeforeExactitude: p.motionChangeBeforeExactitude ?? { planetA: false, planetB: false, events: [] },
+      refranation: p.refranation ?? { occurs: false },
       status: p.exactitudeFound === false ? "does_not_perfect" : "perfects",
     };
   });
@@ -115,8 +122,60 @@ describe("TRANSLATION OF LIGHT", () => {
     const found = translations.find((t) => t.translator === "moon" && t.fromPlanet === "mars" && t.toPlanet === "venus");
     expect(found).toBeDefined();
     expect(found.occurs).toBe(true);
-    expect(found.applyingAspect).toBe("trine");
-    expect(found.applicationExactitudeTime).toBe("1994-11-21T09:31:59.296Z");
+    expect(found.applyingLeg.aspectType).toBe("trine");
+    expect(found.applyingLeg.futureExactitudeTimestampUTC).toBe("1994-11-21T09:31:59.296Z");
+    expect(found.separatingLeg.aspectType).toBe("sextile");
+    expect(found.separatingLeg.stillWithinOrb).toBe(true);
+  });
+
+  it("TEST 1b: separating leg still within orb AND applying leg satisfies convention -> Translation detected with full evidence", () => {
+    const aspects = buildSyntheticAspects({
+      "mars-moon": { aspectType: "sextile", exactAngle: 60, motionStatus: "separating", orbFromExact: 2, allowedOrb: 10 },
+      "moon-venus": { aspectType: "trine", exactAngle: 120, motionStatus: "applying" },
+    });
+    const directPerfection = buildSyntheticDirectPerfection({
+      "moon-venus": { isCandidate: true, aspectType: "trine", exactitudeFound: true, exactitudeTimestampUTC: "1994-11-21T09:31:59.296Z" },
+    });
+    const translations = computeTranslations({
+      aspects,
+      directPerfection,
+      receptionMatrix: emptyReceptionMatrix(),
+      speedOf: (p) => (p === "moon" ? 12 : p === "mars" ? 0.4 : p === "venus" ? 0.1 : 1),
+      startAstroTime: REAL_ASTRO_TIME,
+    });
+    const found = translations.find((t) => t.translator === "moon" && t.fromPlanet === "mars" && t.toPlanet === "venus");
+    expect(found).toBeDefined();
+    expect(found.separatingLeg).toMatchObject({
+      planet: "mars",
+      aspectType: "sextile",
+      currentOrbFromExact: 2,
+      allowedOrb: 10,
+      stillWithinOrb: true,
+    });
+    expect(typeof found.separatingLeg.previousExactitudeTimestampUTC).toBe("string");
+  });
+
+  it("TEST 1c: prior exact aspect alone is NOT sufficient once the translator has separated beyond its allowed orb -> not Translation", () => {
+    const aspects = buildSyntheticAspects({
+      // Currently still geometrically "separating" and nominally aspecting,
+      // but orbFromExact (12) now exceeds allowedOrb (10) - the separating
+      // relationship has already moved beyond its valid Lilly moiety-sum
+      // orb, so a historical exact contact alone must not be classified as
+      // an active Translation leg.
+      "mars-moon": { aspectType: "sextile", exactAngle: 60, motionStatus: "separating", orbFromExact: 12, allowedOrb: 10 },
+      "moon-venus": { aspectType: "trine", exactAngle: 120, motionStatus: "applying" },
+    });
+    const directPerfection = buildSyntheticDirectPerfection({
+      "moon-venus": { isCandidate: true, aspectType: "trine", exactitudeFound: true, exactitudeTimestampUTC: "1994-11-21T09:31:59.296Z" },
+    });
+    const translations = computeTranslations({
+      aspects,
+      directPerfection,
+      receptionMatrix: emptyReceptionMatrix(),
+      speedOf: (p) => (p === "moon" ? 12 : p === "mars" ? 0.4 : p === "venus" ? 0.1 : 1),
+      startAstroTime: REAL_ASTRO_TIME,
+    });
+    expect(translations.find((t) => t.translator === "moon" && t.fromPlanet === "mars" && t.toPlanet === "venus")).toBeUndefined();
   });
 
   it("TEST 2: applying to both, but no prior separation from either -> not Translation", () => {
@@ -195,10 +254,25 @@ describe("TRANSLATION OF LIGHT", () => {
     expect(found.receptionContext.withToPlanet.venusReceivesMoon.types).toEqual(["term"]);
     expect(found.occurs).toBe(true); // reception present but not required for occurs
   });
+
+  it("TEST 1d: the separating leg's allowedOrb is Phase 3F's Lilly moiety-sum value, reused exactly (not re-derived)", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    const { translations } = chart.classical.perfectionMechanics;
+    expect(translations.length).toBeGreaterThan(0);
+    for (const t of translations) {
+      const separatingAspectPair = chart.classical.aspects.find(
+        (a) => [a.planetA, a.planetB].sort().join("-") === [t.translator, t.separatingLeg.planet].sort().join("-"),
+      );
+      // Reused verbatim - not a separately computed or re-derived value.
+      expect(t.separatingLeg.allowedOrb).toBe(separatingAspectPair.aspect.allowedOrb);
+      expect(t.separatingLeg.currentOrbFromExact).toBe(separatingAspectPair.aspect.orbFromExact);
+      expect(t.separatingLeg.stillWithinOrb).toBe(separatingAspectPair.aspect.isWithinOrb);
+    }
+  });
 });
 
 describe("COLLECTION OF LIGHT", () => {
-  it("TEST 6: A and B both apply to slower C -> Collection detected", () => {
+  it("TEST 6: A and B both apply to slower C -> Collection candidate detected", () => {
     const aspects = buildSyntheticAspects({
       "moon-saturn": { aspectType: "trine", exactAngle: 120, motionStatus: "applying" },
       "jupiter-saturn": { aspectType: "square", exactAngle: 90, motionStatus: "applying" },
@@ -215,9 +289,63 @@ describe("COLLECTION OF LIGHT", () => {
     });
     const found = collections.find((c) => c.collector === "saturn" && c.planetA === "moon" && c.planetB === "jupiter");
     expect(found).toBeDefined();
-    expect(found.occurs).toBe(true);
-    expect(found.aExactitudeTime).toBe("1994-11-21T15:57:54.960Z");
-    expect(found.bExactitudeTime).toBeNull(); // one leg never perfects - not forced
+    expect(found.isCandidate).toBe(true);
+    expect(found.aLeg.exactitudeTimestampUTC).toBe("1994-11-21T15:57:54.960Z");
+    expect(found.bLeg.exactitudeTimestampUTC).toBeNull(); // one leg never perfects - not forced
+  });
+
+  it("TEST 6b: both legs perfecting is distinguishable from mere candidate status (completionStatus: both_legs_perfect)", () => {
+    const aspects = buildSyntheticAspects({
+      "moon-saturn": { aspectType: "trine", exactAngle: 120, motionStatus: "applying" },
+      "jupiter-saturn": { aspectType: "square", exactAngle: 90, motionStatus: "applying" },
+    });
+    const directPerfection = buildSyntheticDirectPerfection({
+      "moon-saturn": { isCandidate: true, aspectType: "trine", exactitudeFound: true, exactitudeTimestampUTC: "1994-11-21T15:57:54.960Z" },
+      "jupiter-saturn": { isCandidate: true, aspectType: "square", exactitudeFound: true, exactitudeTimestampUTC: "1994-12-01T00:00:00.000Z" },
+    });
+    const collections = computeCollections({
+      aspects,
+      directPerfection,
+      receptionMatrix: emptyReceptionMatrix(),
+      speedOf: (p) => (p === "saturn" ? 0.02 : p === "moon" ? 12 : p === "jupiter" ? 0.2 : 1),
+    });
+    const found = collections.find((c) => c.collector === "saturn" && c.planetA === "moon" && c.planetB === "jupiter");
+    expect(found.isCandidate).toBe(true);
+    expect(found.aLeg.exactitudeFound).toBe(true);
+    expect(found.bLeg.exactitudeFound).toBe(true);
+    expect(found.completionStatus).toBe("both_legs_perfect");
+  });
+
+  it("TEST 6c: one leg refranating before exactitude stays visible in raw leg data but is NOT presented as a fully completed two-leg Collection", () => {
+    const aspects = buildSyntheticAspects({
+      "moon-saturn": { aspectType: "trine", exactAngle: 120, motionStatus: "applying" },
+      "jupiter-saturn": { aspectType: "square", exactAngle: 90, motionStatus: "applying" },
+    });
+    const refranation = {
+      occurs: true,
+      planet: "jupiter",
+      timestampUTC: "1994-11-25T00:00:00.000Z",
+      orbBeforeReversal: 2.5,
+      orbAfterReversal: 2.9,
+    };
+    const directPerfection = buildSyntheticDirectPerfection({
+      "moon-saturn": { isCandidate: true, aspectType: "trine", exactitudeFound: true, exactitudeTimestampUTC: "1994-11-21T15:57:54.960Z" },
+      "jupiter-saturn": { isCandidate: true, aspectType: "square", exactitudeFound: false, refranation },
+    });
+    const collections = computeCollections({
+      aspects,
+      directPerfection,
+      receptionMatrix: emptyReceptionMatrix(),
+      speedOf: (p) => (p === "saturn" ? 0.02 : p === "moon" ? 12 : p === "jupiter" ? 0.2 : 1),
+    });
+    const found = collections.find((c) => c.collector === "saturn" && c.planetA === "moon" && c.planetB === "jupiter");
+    // Raw refranation evidence is preserved, not discarded...
+    expect(found.bLeg.refranation).toEqual(refranation);
+    expect(found.bLeg.exactitudeFound).toBe(false);
+    expect(found.bLeg.exactitudeTimestampUTC).toBeNull();
+    // ...but the structure is NOT silently reported as a completed two-leg collection.
+    expect(found.completionStatus).toBe("one_leg_does_not_perfect");
+    expect(found.completionStatus).not.toBe("both_legs_perfect");
   });
 
   it("TEST 7: only one planet applies to C -> not Collection", () => {
@@ -278,6 +406,27 @@ describe("COLLECTION OF LIGHT", () => {
   });
 });
 
+describe("COLLECTION VERIFICATION-CHART RE-CHECK (Saturn collects Moon + Jupiter)", () => {
+  it("the Jupiter leg (refranating, exactitudeFound=false) is a structural candidate leg, not silently a completed perfection", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    const collection = chart.classical.perfectionMechanics.collections.find(
+      (c) => c.collector === "saturn" && [c.planetA, c.planetB].sort().join("-") === "jupiter-moon",
+    );
+    expect(collection).toBeDefined();
+    expect(collection.isCandidate).toBe(true);
+    const jupiterLeg = collection.planetA === "jupiter" ? collection.aLeg : collection.bLeg;
+    const moonLeg = collection.planetA === "moon" ? collection.aLeg : collection.bLeg;
+    expect(moonLeg.exactitudeFound).toBe(true);
+    expect(jupiterLeg.exactitudeFound).toBe(false);
+    expect(jupiterLeg.exactitudeTimestampUTC).toBeNull();
+    // completionStatus must NOT claim a full two-leg perfection here, and
+    // Jupiter's firm non-perfection (refranation) takes priority over any
+    // (moot) ingress flag - it is not "requires_historical_rule".
+    expect(collection.completionStatus).not.toBe("both_legs_perfect");
+    expect(collection.completionStatus).toBe("one_leg_does_not_perfect");
+  });
+});
+
 describe("PROHIBITION", () => {
   it("TEST 10: original A-B applying, third-party exactitude occurs first -> Prohibition detected", () => {
     const directPerfection = buildSyntheticDirectPerfection({
@@ -312,6 +461,36 @@ describe("PROHIBITION", () => {
     );
     expect(prohibition).toBeDefined();
     expect(prohibition.prohibitingPlanet).toBe("moon");
+  });
+
+  it("TEST 13: Prohibition results are byte-for-byte unchanged by the Translation/Collection refinement (no shared raw-event dependency required otherwise)", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    const { prohibitions } = chart.classical.perfectionMechanics;
+    expect(prohibitions.length).toBe(2);
+    expect(prohibitions).toEqual([
+      {
+        occurs: true,
+        originalPair: ["sun", "saturn"],
+        originalAspect: "square",
+        prohibitingPlanet: "moon",
+        interveningAspect: "trine",
+        interveningExactitudeTime: "1994-11-21T15:57:54.960Z",
+        originalExpectedExactitudeTime: "1994-11-28T11:22:54.375Z",
+        reason: "third_planet_interposed_before_original_perfection",
+        convention: "lilly_third_planet_interposes_before_perfection",
+      },
+      {
+        occurs: true,
+        originalPair: ["moon", "saturn"],
+        originalAspect: "trine",
+        prohibitingPlanet: "venus",
+        interveningAspect: "trine",
+        interveningExactitudeTime: "1994-11-21T09:31:59.296Z",
+        originalExpectedExactitudeTime: "1994-11-21T15:57:54.960Z",
+        reason: "third_planet_interposed_before_original_perfection",
+        convention: "lilly_third_planet_interposes_before_perfection",
+      },
+    ]);
   });
 });
 
@@ -360,7 +539,7 @@ describe("RAW INTERFERENCE LAYER", () => {
     // recomputation that could disagree with the locked mirror-resolution fix.
     for (const t of chart.classical.perfectionMechanics.translations) {
       const dp = chart.classical.directPerfection.find((d) => [d.planetA, d.planetB].sort().join("-") === [t.translator, t.toPlanet].sort().join("-"));
-      expect(t.applicationExactitudeTime).toBe(dp.exactitudeTimestampUTC);
+      expect(t.applyingLeg.futureExactitudeTimestampUTC).toBe(dp.exactitudeTimestampUTC);
     }
   });
 
@@ -435,8 +614,9 @@ describe("TEST 26: Full verification chart output - computed, not pre-assumed - 
       expect(["detected", "requires_historical_rule"]).toContain(t.technicalStatus);
     }
     for (const c of pm.collections) {
-      expect(c.occurs).toBe(true);
+      expect(c.isCandidate).toBe(true);
       expect(TRADITIONAL_PLANETS).toContain(c.collector);
+      expect(["both_legs_perfect", "one_leg_does_not_perfect", "requires_historical_rule"]).toContain(c.completionStatus);
     }
 
     // Phase 1

@@ -1278,6 +1278,66 @@ verification pattern used in every prior phase). All 312 tests pass
 (289 carried over from Phase 1–3G-A unchanged, plus 23 new Phase 3G-B
 tests).
 
+### 17a. Refinement: Translation orb-continuity and Collection candidate-vs-completion
+
+Before locking Phase 3G-B, one focused refinement was made to Translation
+and Collection only (Prohibition, Frustration, Phase 1–3G-A untouched).
+
+**Translation — a prior exact aspect alone is not sufficient.** Re-checked
+against the same source set (Skyscript forum threads, astrologysoftware.com's
+dictionary, Astrocepheus's knowledge base — consistent, no material
+disagreement found): "the translating planet must be within moiety of
+the other two planets in the trio." The translator must STILL be within
+its allowed Lilly moiety-sum orb of the planet it is separating from at
+the moment it applies to the second planet — not merely have been exact
+with it at some point in the past. This is now checked **explicitly**
+(`separatingLeg.stillWithinOrb`, computed directly from Phase 3F's own
+`orbFromExact`/`allowedOrb` for that pair) rather than left as an
+implicit side effect of the upstream applying/separating gate. Each
+translation now reports full `separatingLeg`/`applyingLeg` evidence
+objects (aspect type, past/future exactitude timestamp, current orb,
+allowed orb, within-orb boolean) instead of a handful of flat fields.
+**Result: the count is unchanged (3)** — the prior implementation's gate
+already implied orb-continuity for every real candidate in this chart;
+the refinement makes that condition explicit, independently verified,
+and directly testable rather than changing which candidates qualify.
+
+**Collection — a structural candidate is not the same fact as a
+completed two-leg event.** `collections` entries now report `isCandidate`
+(always `true` for an entry present in the array — two faster planets
+currently applying to a slower collector, no direct A–B aspect) alongside
+`aLeg`/`bLeg` (each with `applying`, `exactitudeFound`,
+`exactitudeTimestampUTC`, `refranation` — Phase 3G-A's own fields, reused
+verbatim) and a `completionStatus`: `"both_legs_perfect"`,
+`"one_leg_does_not_perfect"`, or `"requires_historical_rule"`. A leg that
+firmly does not perfect (refranation, or no crossing found at all) takes
+priority over an ingress flag on either leg — Phase 3G-A's
+`ingressBeforeExactitude` can be `true` even on a leg that never reaches
+exactitude, and that flag is moot when there is no perfection for the
+historical-rule question to apply to; this ordering was caught and fixed
+via a dedicated test before this refinement was reported complete.
+**Re-checking Saturn collects Moon + Jupiter**: this remains a structural
+Collection candidate (`isCandidate: true`), but is explicitly **not** a
+completed two-leg Collection — `completionStatus: "one_leg_does_not_perfect"`
+(Jupiter's leg refranates and never reaches exactitude; Moon's leg does).
+The other collection in this chart, Saturn collects Sun + Moon, has both
+legs geometrically reach exactitude but each carries its own sign-ingress
+ambiguity, so it resolves to `completionStatus: "requires_historical_rule"`
+— genuinely distinct from both `"both_legs_perfect"` and
+`"one_leg_does_not_perfect"`. **Result: the count is unchanged (2)** —
+both structural candidates found before still qualify; only their
+completion status is now distinguished rather than collapsed into a
+single `technicalStatus`.
+
+**Prohibition, Frustration, and Phase 1–3G-A are confirmed unchanged**
+(dedicated regression tests compare the full `prohibitions` array
+byte-for-byte against the pre-refinement result, and `directPerfection`/
+`aspects`/`receptionMatrix` against a fresh independent computation).
+UI extended with a "Separating Leg Still Within Orb" column for
+Translation and a "Candidate" / "Completion Status" distinction for
+Collection — neutral technical language only, no outcome claims. 7 new
+tests (319 total, all passing); zero new production dependencies.
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:
