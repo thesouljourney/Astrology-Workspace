@@ -8,36 +8,36 @@
  *     altitude (astronomy-engine Equator()+Horizon()) — NOT house number
  *   - sign: Phase 1 (already-verified placement)
  *
- * HAYZ (per this project's brief, cross-checked during development
- * against multiple traditional sources — e.g. Skyscript's glossary and
- * William Lilly's original "Christian Astrology" formulation — which
- * agree on this exact three-part test):
- *   Diurnal planet:  chart is DAY   AND above horizon AND masculine sign
- *   Nocturnal planet: chart is NIGHT AND below horizon AND feminine sign
- * Each of the three conditions is evaluated and reported independently
- * (chartSectMatches / hemisphereMatches / signGenderMatches), not just
- * the final boolean, so a non-Hayz planet's specific failing condition(s)
- * are always visible.
+ * CONVENTION: hayzHalbConvention = "traditional_halb_base_hayz_full"
+ * (see CLASSICAL_META in classicalChart.js). Historical authors vary in
+ * their exact definitions of Halb — some (e.g. John Frawley, "The Horary
+ * Textbook", as summarized in Skyscript's glossary) use it as a synonym
+ * for the sect/hemisphere condition alone, with Hayz as a fuller
+ * condition built on top of it (Hayz implies Halb). Others treat Halb as
+ * a separate, narrower intermediate category disjoint from Hayz. This
+ * project follows the former (base/full) convention as of this revision:
  *
- * HALB — A NOTED TERMINOLOGY DIFFERENCE, NOT CHOSEN SILENTLY: during
- * development, at least one other reputable source (John Frawley, "The
- * Horary Textbook", as summarized in Skyscript's glossary) uses "Halb"
- * simply as a synonym for the HEMISPHERE condition alone (a diurnal
- * planet above the earth by day, or a nocturnal planet below the earth
- * by night) — under that definition, a planet in full Hayz is *also* in
- * Halb (Hayz is a subset of Halb, not a separate category from it).
- * This project's brief explicitly defines a DIFFERENT, narrower,
- * project-specific "Halb" instead — the intermediate condition where the
- * hemisphere matches but sign gender does NOT, deliberately made mutually
- * exclusive with Hayz. That explicit definition is what is implemented
- * here. This is a real difference from at least one traditional source,
- * disclosed here and in the Phase 3D report rather than hidden.
+ *   HALB = the planet is in its proper sect/hemisphere condition:
+ *     chart sect matches the planet's effective sect, AND the planet is
+ *     on the correct side of the horizon for that sect (diurnal: above
+ *     horizon by day; nocturnal: below horizon by night).
  *
- * Halb (this project's definition):
- *   chart sect matches effective sect, AND hemisphere matches, AND
- *   sign gender does NOT match (i.e. would-be Hayz minus the gender leg).
- *   By construction, isHayz and isHalb can never both be true (they
- *   differ on the signGenderMatches condition).
+ *   HAYZ = Halb PLUS the proper sign-gender condition:
+ *     diurnal planet in a masculine sign, or nocturnal planet in a
+ *     feminine sign.
+ *
+ * Because Hayz is Halb plus one additional condition, isHayz === true
+ * implies isHalb === true (Hayz is a subset of Halb, not disjoint from
+ * it) — they are NOT forced mutually exclusive. A separate, mutually
+ * exclusive `sectConditionLabel` ("hayz" | "halb_only" | "of_sect_only" |
+ * "out_of_sect") is provided for display purposes so the UI never shows
+ * confusing duplication: "halb_only" means Halb is true but Hayz is not
+ * (the sign-gender leg failed).
+ *
+ * Each of the three underlying legs (chartSectMatches / hemisphereMatches
+ * / signGenderMatches) is still reported independently, not just the
+ * final booleans, so a planet's specific failing condition(s) are always
+ * visible.
  *
  * NO SCORE of any kind is produced anywhere in this module.
  */
@@ -61,12 +61,12 @@ export function computeSectConditionDetail({ sign, chartSect, effectiveSect, isO
   const signGenderMatches = effectiveSect === "diurnal" ? signGender === "masculine" : signGender === "feminine";
   const chartSectMatches = isOfSect;
 
-  const isHayz = chartSectMatches && hemisphereMatches && signGenderMatches;
-  const isHalb = chartSectMatches && hemisphereMatches && !signGenderMatches;
+  const isHalb = chartSectMatches && hemisphereMatches;
+  const isHayz = isHalb && signGenderMatches;
 
   let sectConditionLabel;
   if (isHayz) sectConditionLabel = "hayz";
-  else if (isHalb) sectConditionLabel = "halb";
+  else if (isHalb) sectConditionLabel = "halb_only";
   else if (isOfSect) sectConditionLabel = "of_sect_only";
   else sectConditionLabel = "out_of_sect";
 
@@ -77,7 +77,7 @@ export function computeSectConditionDetail({ sign, chartSect, effectiveSect, isO
     signGender,
     horizon: { isAboveHorizon, altitudeDegrees },
     hayz: { isHayz, chartSectMatches, hemisphereMatches, signGenderMatches },
-    halb: { isHalb },
+    halb: { isHalb, chartSectMatches, hemisphereMatches },
     sectConditionLabel,
   };
 }

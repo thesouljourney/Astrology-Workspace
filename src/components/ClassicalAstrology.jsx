@@ -49,7 +49,7 @@ const SPEED_STATUS_LABEL = {
 
 const SECT_CONDITION_LABEL = {
   hayz: "Hayz｜合宜",
-  halb: "Halb",
+  halb_only: "Halb Only｜仅合半宜",
   of_sect_only: "Of Sect Only｜仅合乎宗派",
   out_of_sect: "Out of Sect｜不合宗派",
 };

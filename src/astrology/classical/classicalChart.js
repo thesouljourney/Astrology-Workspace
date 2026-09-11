@@ -20,6 +20,10 @@ export const CLASSICAL_META = {
   termSystem: "egyptian",
   faceSystem: "chaldean",
   speedConvention: SPEED_CONVENTION,
+  // Halb = proper sect/hemisphere condition; Hayz = Halb + proper sign
+  // gender. Hayz therefore implies Halb (not mutually exclusive) — see
+  // the doc comment in hayzHalb.js for the sourced variance disclosure.
+  hayzHalbConvention: "traditional_halb_base_hayz_full",
 };
 
 /**

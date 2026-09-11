@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { calculateChart } from "../../ephemeris.js";
 import { getSignGender, MASCULINE_SIGNS, FEMININE_SIGNS } from "../rules/signGender.js";
 import { computeSectConditionDetail } from "../hayzHalb.js";
+import { CLASSICAL_META } from "../classicalChart.js";
 
 const VERIFICATION_INPUT = {
   birthDate: "1994-11-21",
@@ -49,8 +50,8 @@ describe("TEST 1-2: Sign gender table completeness", () => {
   });
 });
 
-describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level)", () => {
-  it("TEST 3: diurnal planet, day chart, above horizon, masculine sign -> Hayz", () => {
+describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level) - Hayz implies Halb", () => {
+  it("TEST 3: diurnal planet, day chart, above horizon, masculine sign -> Hayz AND Halb both true", () => {
     const r = computeSectConditionDetail({
       sign: "leo",
       chartSect: "day",
@@ -60,11 +61,11 @@ describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level)", () => 
       altitudeDegrees: 40,
     });
     expect(r.hayz.isHayz).toBe(true);
-    expect(r.halb.isHalb).toBe(false);
+    expect(r.halb.isHalb).toBe(true);
     expect(r.sectConditionLabel).toBe("hayz");
   });
 
-  it("TEST 4: nocturnal planet, night chart, below horizon, feminine sign -> Hayz", () => {
+  it("TEST 4: nocturnal planet, night chart, below horizon, feminine sign -> Hayz AND Halb both true", () => {
     const r = computeSectConditionDetail({
       sign: "cancer",
       chartSect: "night",
@@ -74,11 +75,11 @@ describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level)", () => 
       altitudeDegrees: -20,
     });
     expect(r.hayz.isHayz).toBe(true);
-    expect(r.halb.isHalb).toBe(false);
+    expect(r.halb.isHalb).toBe(true);
     expect(r.sectConditionLabel).toBe("hayz");
   });
 
-  it("TEST 5: diurnal planet in a night chart is never Hayz, regardless of hemisphere/sign", () => {
+  it("TEST 5: diurnal planet in a night chart is never Hayz nor Halb, regardless of hemisphere/sign", () => {
     const r = computeSectConditionDetail({
       sign: "leo",
       chartSect: "night",
@@ -88,10 +89,11 @@ describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level)", () => 
       altitudeDegrees: 40,
     });
     expect(r.hayz.isHayz).toBe(false);
+    expect(r.halb.isHalb).toBe(false);
     expect(r.hayz.chartSectMatches).toBe(false);
   });
 
-  it("TEST 6: correct chart sect and hemisphere but wrong sign gender is never Hayz", () => {
+  it("TEST 6: correct chart sect and hemisphere but wrong sign gender is Halb but NOT Hayz", () => {
     const r = computeSectConditionDetail({
       sign: "cancer", // feminine, but planet is diurnal
       chartSect: "day",
@@ -102,11 +104,13 @@ describe("TEST 3-6: Hayz rule (positive and negative cases, rule-level)", () => 
     });
     expect(r.hayz.isHayz).toBe(false);
     expect(r.hayz.signGenderMatches).toBe(false);
+    expect(r.halb.isHalb).toBe(true);
+    expect(r.sectConditionLabel).toBe("halb_only");
   });
 });
 
-describe("TEST 7-9: Halb rule (this project's definition)", () => {
-  it("TEST 7: chart sect matches + hemisphere matches + gender does NOT match -> Halb", () => {
+describe("TEST 7-9: Halb rule (base sect/hemisphere condition, per revised project convention)", () => {
+  it("TEST 7: chart sect matches + hemisphere matches + gender does NOT match -> Halb true, Hayz false", () => {
     const r = computeSectConditionDetail({
       sign: "cancer", // feminine
       chartSect: "day",
@@ -117,7 +121,7 @@ describe("TEST 7-9: Halb rule (this project's definition)", () => {
     });
     expect(r.halb.isHalb).toBe(true);
     expect(r.hayz.isHayz).toBe(false);
-    expect(r.sectConditionLabel).toBe("halb");
+    expect(r.sectConditionLabel).toBe("halb_only");
   });
 
   it("TEST 8: hemisphere matches but chart sect does NOT match -> not Halb (isOfSect required)", () => {
@@ -149,12 +153,14 @@ describe("TEST 7-9: Halb rule (this project's definition)", () => {
   });
 });
 
-describe("TEST 10: Hayz and Halb are mutually exclusive across the full input space", () => {
-  it("no combination of inputs ever yields isHayz === true && isHalb === true", () => {
+describe("TEST 10: Hayz implies Halb across the full input space (base/full convention, NOT mutually exclusive)", () => {
+  it("10a. every combination where isHayz is true also has isHalb true", () => {
     const signs = ALL_SIGNS;
     const chartSects = ["day", "night"];
     const effectiveSects = ["diurnal", "nocturnal"];
     const boolValues = [true, false];
+    let hayzCasesSeen = 0;
+    let halbOnlyCasesSeen = 0;
     for (const sign of signs) {
       for (const chartSect of chartSects) {
         for (const effectiveSect of effectiveSects) {
@@ -168,20 +174,54 @@ describe("TEST 10: Hayz and Halb are mutually exclusive across the full input sp
                 isAboveHorizon,
                 altitudeDegrees: isAboveHorizon ? 10 : -10,
               });
-              expect(r.hayz.isHayz && r.halb.isHalb).toBe(false);
+              if (r.hayz.isHayz) {
+                expect(r.halb.isHalb).toBe(true);
+                hayzCasesSeen++;
+              }
+              if (r.halb.isHalb && !r.hayz.isHayz) halbOnlyCasesSeen++;
             }
           }
         }
       }
     }
+    // Sanity: both a Hayz case and a Halb-without-Hayz case actually occur
+    // in this sweep, so the assertion above is not vacuously true.
+    expect(hayzCasesSeen).toBeGreaterThan(0);
+    expect(halbOnlyCasesSeen).toBeGreaterThan(0);
+  });
+
+  it("10b. a planet can have isHalb = true and isHayz = true simultaneously (not forced apart)", () => {
+    const r = computeSectConditionDetail({
+      sign: "leo",
+      chartSect: "day",
+      effectiveSect: "diurnal",
+      isOfSect: true,
+      isAboveHorizon: true,
+      altitudeDegrees: 40,
+    });
+    expect(r.halb.isHalb).toBe(true);
+    expect(r.hayz.isHayz).toBe(true);
+  });
+
+  it("10c. Halb can exist without Hayz when only the gender condition fails", () => {
+    const r = computeSectConditionDetail({
+      sign: "cancer", // feminine, wrong for a diurnal planet
+      chartSect: "day",
+      effectiveSect: "diurnal",
+      isOfSect: true,
+      isAboveHorizon: true,
+      altitudeDegrees: 40,
+    });
+    expect(r.halb.isHalb).toBe(true);
+    expect(r.hayz.isHayz).toBe(false);
   });
 });
 
-describe("TEST 11: sectConditionLabel exactly reflects the four exclusive categories", () => {
-  it("hayz / halb / of_sect_only / out_of_sect cover all cases with no overlap", () => {
+describe("TEST 11: sectConditionLabel exactly reflects the four mutually exclusive display categories", () => {
+  it("hayz / halb_only / of_sect_only / out_of_sect cover all cases with no overlap", () => {
     const cases = [
       { isOfSect: true, hemisphereMatches: true, signGenderMatches: true, expected: "hayz" },
-      { isOfSect: true, hemisphereMatches: true, signGenderMatches: false, expected: "halb" },
+      { isOfSect: true, hemisphereMatches: true, signGenderMatches: false, expected: "halb_only" },
       { isOfSect: true, hemisphereMatches: false, signGenderMatches: true, expected: "of_sect_only" },
       { isOfSect: true, hemisphereMatches: false, signGenderMatches: false, expected: "of_sect_only" },
       { isOfSect: false, hemisphereMatches: true, signGenderMatches: true, expected: "out_of_sect" },
@@ -202,6 +242,34 @@ describe("TEST 11: sectConditionLabel exactly reflects the four exclusive catego
       });
       expect(r.sectConditionLabel).toBe(c.expected);
     }
+  });
+
+  it("sectConditionLabel is 'hayz' whenever both isHayz and isHalb are true, never 'halb_only'", () => {
+    const r = computeSectConditionDetail({
+      sign: "leo",
+      chartSect: "day",
+      effectiveSect: "diurnal",
+      isOfSect: true,
+      isAboveHorizon: true,
+      altitudeDegrees: 40,
+    });
+    expect(r.halb.isHalb).toBe(true);
+    expect(r.hayz.isHayz).toBe(true);
+    expect(r.sectConditionLabel).toBe("hayz");
+  });
+
+  it("sectConditionLabel is 'halb_only' when Halb is true and Hayz is false", () => {
+    const r = computeSectConditionDetail({
+      sign: "cancer",
+      chartSect: "day",
+      effectiveSect: "diurnal",
+      isOfSect: true,
+      isAboveHorizon: true,
+      altitudeDegrees: 40,
+    });
+    expect(r.halb.isHalb).toBe(true);
+    expect(r.hayz.isHayz).toBe(false);
+    expect(r.sectConditionLabel).toBe("halb_only");
   });
 });
 
@@ -292,14 +360,14 @@ describe("TEST 14-17: chart.classical wiring reuses Phase 3B data bit-for-bit, n
 });
 
 describe("TEST 18: Full verification chart output - computed, not pre-assumed", () => {
-  it("TEST 18: every classical planet has a well-formed sectConditionDetail, and the actual computed result matches the documented, independently-verified rule trace", () => {
+  it("TEST 18: every classical planet has a well-formed sectConditionDetail, and Venus is Hayz with Halb also true", () => {
     const chart = calculateChart(VERIFICATION_INPUT);
     expect(chart.classical.sect).toBe("night");
 
     const expected = {
       // Derived by tracing the rules against each planet's already-verified
       // Phase 1/3B sign, chartSect, effectiveSect, isOfSect and horizon data -
-      // not chosen in advance. See Phase 3D report for the full per-planet trace.
+      // not chosen in advance. See Phase 3D refinement report for the full trace.
       sun: "out_of_sect",
       moon: "of_sect_only",
       mercury: "out_of_sect",
@@ -314,11 +382,17 @@ describe("TEST 18: Full verification chart output - computed, not pre-assumed", 
       expect(p.sectConditionDetail.sectConditionLabel).toBe(label);
     }
 
-    // Exactly one planet reaches full Hayz in this chart, and none reach Halb.
+    // Venus is the one Hayz planet in this chart, and under the revised
+    // base/full convention it must also be Halb (Hayz implies Halb).
+    const venus = findClassical(chart, "venus");
+    expect(venus.sectConditionDetail.hayz.isHayz).toBe(true);
+    expect(venus.sectConditionDetail.halb.isHalb).toBe(true);
+
     const hayzCount = chart.classical.planets.filter((p) => p.sectConditionDetail.hayz.isHayz).length;
     const halbCount = chart.classical.planets.filter((p) => p.sectConditionDetail.halb.isHalb).length;
     expect(hayzCount).toBe(1);
-    expect(halbCount).toBe(0);
+    // Halb count must be >= Hayz count under the base/full convention.
+    expect(halbCount).toBeGreaterThanOrEqual(hayzCount);
   });
 });
 
@@ -339,7 +413,43 @@ describe("TEST 19: sectConditionDetail has the exact documented structured shape
       expect(d).toHaveProperty("halb");
       expect(d.halb).toHaveProperty("isHalb");
       expect(d).toHaveProperty("sectConditionLabel");
-      expect(["hayz", "halb", "of_sect_only", "out_of_sect"]).toContain(d.sectConditionLabel);
+      expect(["hayz", "halb_only", "of_sect_only", "out_of_sect"]).toContain(d.sectConditionLabel);
     }
+  });
+});
+
+describe("TEST 20: hayzHalbConvention metadata is stored permanently in the calculation output", () => {
+  it("chart.classical.meta.hayzHalbConvention is 'traditional_halb_base_hayz_full'", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    expect(chart.classical.meta.hayzHalbConvention).toBe("traditional_halb_base_hayz_full");
+    expect(CLASSICAL_META.hayzHalbConvention).toBe("traditional_halb_base_hayz_full");
+  });
+});
+
+describe("TEST 21: Phase 1-3C values remain unchanged by this refinement", () => {
+  it("Phase 1/2/3A/3B/3C verification values are untouched", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+
+    // Phase 1
+    const sunPlanet = chart.planets.find((p) => p.key === "sun");
+    expect(sunPlanet.sign.english).toBe("Scorpio");
+    expect(chart.angles.asc.sign.english).toBe("Virgo");
+
+    // Phase 2
+    expect(chart.points.length).toBe(26);
+
+    // Phase 3A
+    const venusDignity = findClassical(chart, "venus");
+    expect(venusDignity.dignity.detriment.active).toBe(true);
+    expect(venusDignity.totalEssentialScore).toBe(-5);
+
+    // Phase 3B
+    const jupiter = findClassical(chart, "jupiter");
+    expect(jupiter.condition.solar.condition).toBe("combust");
+
+    // Phase 3C
+    expect(venusDignity.operationalCondition.housePosition).toEqual({ house: 2, class: "succedent" });
+    expect(jupiter.operationalCondition.housePosition.class).toBe("cadent");
+    expect(chart.classical.meta.speedConvention).toBe("william_lilly");
   });
 });

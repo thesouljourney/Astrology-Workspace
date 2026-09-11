@@ -624,22 +624,44 @@ are always visible — not just a single boolean. Cross-checked against
 Skyscript's glossary and William Lilly's *Christian Astrology*, which
 agree on this exact three-part definition.
 
-**Halb — a disclosed, deliberate departure from one traditional source**:
-this project defines Halb (per the project owner's explicit brief) as the
-narrower condition where chart sect matches AND hemisphere matches, but
-sign gender does **not** — i.e. "would-be Hayz minus the gender leg" —
-made **mutually exclusive with Hayz by construction** (verified by
-exhaustive test across the full sign/sect/hemisphere input space). During
-required source cross-checking, at least one other reputable source (John
-Frawley, *The Horary Textbook*, as summarized by Skyscript) instead uses
-"Halb" as a synonym for the hemisphere condition alone, under which a
-Hayz planet is *also* considered in Halb (Hayz ⊂ Halb, not disjoint from
-it). This is a real, disclosed disagreement, not a silently-chosen
-convention — the project owner's own brief already specified the exact
-definition to implement, so no `AskUserQuestion` stop was raised for this
-particular point (unlike Phase 3C's genuinely unresolved Mercury/Venus
-question); the variance is documented here and in `hayzHalb.js`'s doc
-comment instead.
+**Halb — revised convention (base condition beneath Hayz, not disjoint
+from it)**: historical authors vary in their exact definitions of Halb.
+This project's initial Phase 3D implementation defined Halb as a narrow
+intermediate category deliberately disjoint from Hayz. On review, that
+was revised to follow the more common traditional pattern instead —
+consistent with, among others, John Frawley's *The Horary Textbook* (as
+summarized by Skyscript), which uses "Halb" as a synonym for the sect/
+hemisphere condition alone, with Hayz built on top of it as a fuller
+condition:
+
+```
+HALB = chart sect matches the planet's effective sect
+       AND the planet is on the correct side of the horizon for that sect
+       (diurnal: above horizon by day; nocturnal: below horizon by night)
+
+HAYZ = HALB, PLUS the planet is in a sign of the matching gender
+       (diurnal: masculine sign; nocturnal: feminine sign)
+```
+
+This is stored as `hayzHalbConvention: "traditional_halb_base_hayz_full"`
+in `chart.classical.meta`, permanently in the calculation output, not
+only in comments. Because Hayz is Halb plus one further condition,
+**`isHayz === true` implies `isHalb === true`** — the two are reported as
+independent booleans (`sectConditionDetail.hayz.isHayz` and
+`sectConditionDetail.halb.isHalb`) and are **not** forced mutually
+exclusive (verified by exhaustive test across the full sign/sect/
+hemisphere input space, confirming every Hayz case also has Halb true,
+and that Halb-without-Hayz cases exist too). A separate, genuinely
+mutually-exclusive `sectConditionLabel` is provided for display so the UI
+never shows confusing duplication — `"halb_only"` means Halb is true but
+the sign-gender leg failed, so Hayz is not reached.
+
+Other traditional sources still disagree with this project's specific
+choice in various ways (e.g. some treat Halb as an intermediate category
+separate from Hayz, as this project's own earlier implementation did) —
+this variance is disclosed here and in `hayzHalb.js`'s doc comment rather
+than hidden; the project owner made the explicit convention choice this
+revision implements.
 
 **Mercury** uses its already-computed oriental/occidental
 `effectiveSect` from Phase 3B (`condition.sect.effectiveSect`) with no
@@ -648,9 +670,10 @@ Sun and Moon (verified by test that Sun's `sectConditionDetail` is
 identical to calling `computeSectConditionDetail()` directly with its own
 upstream inputs).
 
-`sectConditionLabel` is an optional convenience summary —
-`"hayz"` | `"halb"` | `"of_sect_only"` | `"out_of_sect"` — derived from,
-not additional to, the underlying booleans.
+`sectConditionLabel` is an optional, mutually-exclusive convenience
+summary — `"hayz"` | `"halb_only"` | `"of_sect_only"` | `"out_of_sect"` —
+derived from, not additional to, the underlying `isHayz`/`isHalb`
+booleans (which are not mutually exclusive).
 
 **No score of any kind** (`hayzScore`, `sectScore`,
 `traditionalStrengthScore`, or otherwise) exists anywhere in this module
@@ -665,17 +688,20 @@ in advance:
 | Sun     | Diurnal         | No      | Feminine    | Below   | —    | —    | Out of Sect     |
 | Moon    | Nocturnal       | Yes     | Masculine   | Above   | —    | —    | Of Sect Only    |
 | Mercury | Diurnal         | No      | Feminine    | Below   | —    | —    | Out of Sect     |
-| Venus   | Nocturnal       | Yes     | Feminine    | Below   | ✓    | —    | **Hayz**        |
+| Venus   | Nocturnal       | Yes     | Feminine    | Below   | ✓    | ✓    | **Hayz**        |
 | Mars    | Nocturnal       | Yes     | Masculine   | Above   | —    | —    | Of Sect Only    |
 | Jupiter | Diurnal         | No      | Feminine    | Below   | —    | —    | Out of Sect     |
 | Saturn  | Diurnal         | No      | Feminine    | Below   | —    | —    | Out of Sect     |
 
-Exactly one planet (Venus) reaches full Hayz in this chart; none reach
-Halb — both facts emerged from the rules, they were not targeted in
-advance.
+Exactly one planet (Venus) reaches full Hayz in this chart, and — under
+the revised base/full convention — it is also Halb, since Hayz implies
+Halb. No other planet reaches even `halb_only` in this particular chart
+(each non-Hayz planet fails either the sect or the hemisphere leg
+outright); this emerged from the rules, it was not targeted in advance.
 
-Zero new dependencies, zero network calls. All 178 tests pass (159
-carried over from Phase 1–3C unchanged, plus 19 new Phase 3D tests).
+Zero new dependencies, zero network calls. All 184 tests pass (159
+carried over from Phase 1–3C unchanged, plus 25 Phase 3D tests reflecting
+this revision).
 
 ---
 
