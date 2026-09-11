@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { calculateChart } from "./astrology/ephemeris.js";
 import { formatDMS } from "./utils/formatDegree.js";
+import { formatHouseLabel } from "./utils/houseLabel.js";
 import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
 import "./App.css";
 
@@ -36,13 +37,13 @@ function App() {
   return (
     <div className="workspace">
       <header>
-        <h1>Personal Astrology Workspace</h1>
-        <p className="subtitle">Calculation Prototype</p>
+        <h1>Personal Astrology Workspace｜个人占星工作台</h1>
+        <p className="subtitle">Calculation Prototype｜计算原型</p>
       </header>
 
       <section className="form">
         <div className="field">
-          <label htmlFor="birthDate">Birth Date</label>
+          <label htmlFor="birthDate">Birth Date｜出生日期</label>
           <input
             id="birthDate"
             type="text"
@@ -53,7 +54,7 @@ function App() {
         </div>
 
         <div className="field">
-          <label htmlFor="birthTime">Birth Time</label>
+          <label htmlFor="birthTime">Birth Time｜出生时间</label>
           <input
             id="birthTime"
             type="text"
@@ -64,7 +65,7 @@ function App() {
         </div>
 
         <div className="field">
-          <label htmlFor="latitude">Latitude</label>
+          <label htmlFor="latitude">Latitude｜纬度</label>
           <input
             id="latitude"
             type="text"
@@ -75,7 +76,7 @@ function App() {
         </div>
 
         <div className="field">
-          <label htmlFor="longitude">Longitude</label>
+          <label htmlFor="longitude">Longitude｜经度</label>
           <input
             id="longitude"
             type="text"
@@ -86,7 +87,7 @@ function App() {
         </div>
 
         <div className="field">
-          <label htmlFor="utcOffset">UTC Offset</label>
+          <label htmlFor="utcOffset">UTC Offset｜UTC 时区偏移</label>
           <input
             id="utcOffset"
             type="text"
@@ -97,7 +98,7 @@ function App() {
         </div>
 
         <div className="field">
-          <label htmlFor="houseSystem">House System</label>
+          <label htmlFor="houseSystem">House System｜宫位制</label>
           <select id="houseSystem" value={input.houseSystem} onChange={handleChange("houseSystem")}>
             {SUPPORTED_HOUSE_SYSTEMS.map((sys) => (
               <option key={sys} value={sys}>
@@ -108,7 +109,7 @@ function App() {
         </div>
 
         <button type="button" className="calculate-btn" onClick={handleCalculate}>
-          Calculate Chart
+          Calculate Chart｜开始计算
         </button>
       </section>
 
@@ -117,20 +118,20 @@ function App() {
       {chart && (
         <section className="results">
           <div className="meta">
-            <div>UTC: {chart.meta.utcIso}</div>
-            <div>Julian Day: {chart.meta.julianDay.toFixed(6)}</div>
-            <div>House System: {chart.meta.houseSystem}</div>
+            <div>UTC｜世界协调时: {chart.meta.utcIso}</div>
+            <div>Julian Day｜儒略日: {chart.meta.julianDay.toFixed(6)}</div>
+            <div>House System｜宫位制: {chart.meta.houseSystem}</div>
           </div>
 
-          <h2>Planets</h2>
+          <h2>Planets｜行星</h2>
           <table>
             <thead>
               <tr>
-                <th>Body</th>
-                <th>Sign</th>
-                <th>Degree</th>
-                <th>House</th>
-                <th>Motion</th>
+                <th>Body｜天体</th>
+                <th>Sign｜星座</th>
+                <th>Degree｜度数</th>
+                <th>House｜宫位</th>
+                <th>Motion｜状态</th>
               </tr>
             </thead>
             <tbody>
@@ -143,16 +144,16 @@ function App() {
                     {p.sign.symbol} {p.sign.english}｜{p.sign.chinese}
                   </td>
                   <td>{formatDMS(p.degreeInSign)}</td>
-                  <td>{p.house}</td>
+                  <td>{formatHouseLabel(p.house)}</td>
                   <td className={p.retrograde ? "retrograde" : "direct"}>
-                    {p.retrograde ? "Retrograde" : "Direct"}
+                    {p.retrograde ? "Retrograde｜逆行" : "Direct｜顺行"}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <h2>Angles</h2>
+          <h2>Angles｜四轴</h2>
           <table>
             <tbody>
               <tr>
@@ -186,19 +187,19 @@ function App() {
             </tbody>
           </table>
 
-          <h2>House Cusps</h2>
+          <h2>House Cusps｜宫位</h2>
           <table>
             <thead>
               <tr>
-                <th>House</th>
-                <th>Sign</th>
-                <th>Degree</th>
+                <th>House｜宫位</th>
+                <th>Sign｜星座</th>
+                <th>Degree｜度数</th>
               </tr>
             </thead>
             <tbody>
               {chart.houseCusps.map((c) => (
                 <tr key={c.house}>
-                  <td>House {c.house}</td>
+                  <td>{formatHouseLabel(c.house)}</td>
                   <td>
                     {c.sign.symbol} {c.sign.english}｜{c.sign.chinese}
                   </td>
