@@ -47,6 +47,18 @@ const SPEED_STATUS_LABEL = {
   mean: "Mean｜平均",
 };
 
+const SECT_CONDITION_LABEL = {
+  hayz: "Hayz｜合宜",
+  halb: "Halb",
+  of_sect_only: "Of Sect Only｜仅合乎宗派",
+  out_of_sect: "Out of Sect｜不合宗派",
+};
+
+const SIGN_GENDER_LABEL = {
+  masculine: "Masculine｜阳性",
+  feminine: "Feminine｜阴性",
+};
+
 function speedLabel(speed) {
   if (speed.status === null) return "Withheld｜未定 (no agreed reference)";
   return SPEED_STATUS_LABEL[speed.status];
@@ -57,6 +69,7 @@ function PlanetDetail({ p }) {
   const d = p.dignity;
   const c = p.condition;
   const o = p.operationalCondition;
+  const s = p.sectConditionDetail;
   return (
     <details className="planet-detail">
       <summary>
@@ -221,6 +234,50 @@ function PlanetDetail({ p }) {
           <tr>
             <td>Horizon｜地平线</td>
             <td>{o.horizon.hemisphere === "above_horizon" ? "Above Horizon｜地平线上" : "Below Horizon｜地平线下"}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Sect Condition｜派别条件</h4>
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Chart Sect｜命盘昼夜</td>
+            <td>{s.chartSect === "day" ? "Day｜日间盘" : "Night｜夜间盘"}</td>
+          </tr>
+          <tr>
+            <td>Planet's Effective Sect｜行星有效宗派</td>
+            <td>{s.effectiveSect === "diurnal" ? "Diurnal｜昼间星" : "Nocturnal｜夜间星"}</td>
+          </tr>
+          <tr>
+            <td>Of Sect｜合乎宗派</td>
+            <td>{mark(s.isOfSect)}</td>
+          </tr>
+          <tr>
+            <td>Sign Gender｜星座阴阳</td>
+            <td>{SIGN_GENDER_LABEL[s.signGender]}</td>
+          </tr>
+          <tr>
+            <td>Horizon｜地平线</td>
+            <td>
+              {s.horizon.isAboveHorizon ? "Above Horizon｜地平线上" : "Below Horizon｜地平线下"} (altitude{" "}
+              {s.horizon.altitudeDegrees.toFixed(2)}°)
+            </td>
+          </tr>
+          <tr>
+            <td>Hayz｜合宜</td>
+            <td>
+              {mark(s.hayz.isHayz)} — Chart Sect Matches {mark(s.hayz.chartSectMatches)}, Hemisphere Matches{" "}
+              {mark(s.hayz.hemisphereMatches)}, Sign Gender Matches {mark(s.hayz.signGenderMatches)}
+            </td>
+          </tr>
+          <tr>
+            <td>Halb</td>
+            <td>{mark(s.halb.isHalb)}</td>
+          </tr>
+          <tr>
+            <td>Sect Condition｜派别条件</td>
+            <td>{SECT_CONDITION_LABEL[s.sectConditionLabel]}</td>
           </tr>
         </tbody>
       </table>
@@ -389,6 +446,44 @@ export default function ClassicalAstrology({ chart }) {
                 <td>{o.speed.status === null ? "—" : SPEED_STATUS_LABEL[o.speed.status]}</td>
                 <td>{o.solar ? SOLAR_CONDITION_LABEL[o.solar.status] : "—"}</td>
                 <td>{mark(o.sect.isOfSect)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h3>Sect Condition｜派别条件 (Hayz / Halb)</h3>
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Planet｜行星</th>
+            <th>Chart Sect｜命盘昼夜</th>
+            <th>Effective Sect｜有效宗派</th>
+            <th>Of Sect｜合乎宗派</th>
+            <th>Sign Gender｜星座阴阳</th>
+            <th>Horizon｜地平线</th>
+            <th>Hayz</th>
+            <th>Halb</th>
+            <th>Sect Condition｜派别条件</th>
+          </tr>
+        </thead>
+        <tbody>
+          {classical.planets.map((p) => {
+            const name = PLANET_NAMES[p.planet];
+            const s = p.sectConditionDetail;
+            return (
+              <tr key={p.planet}>
+                <td>
+                  {name.symbol} {name.en}｜{name.cn}
+                </td>
+                <td>{s.chartSect === "day" ? "Day｜日间盘" : "Night｜夜间盘"}</td>
+                <td>{s.effectiveSect === "diurnal" ? "Diurnal｜昼间星" : "Nocturnal｜夜间星"}</td>
+                <td>{mark(s.isOfSect)}</td>
+                <td>{SIGN_GENDER_LABEL[s.signGender]}</td>
+                <td>{s.horizon.isAboveHorizon ? "Above｜地平线上" : "Below｜地平线下"}</td>
+                <td>{mark(s.hayz.isHayz)}</td>
+                <td>{mark(s.halb.isHalb)}</td>
+                <td>{SECT_CONDITION_LABEL[s.sectConditionLabel]}</td>
               </tr>
             );
           })}

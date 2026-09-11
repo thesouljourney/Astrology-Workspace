@@ -11,6 +11,7 @@ import { computeEssentialDignity, TRADITIONAL_PLANETS } from "./essentialDignity
 import { computePlanetaryCondition } from "./planetaryCondition.js";
 import { computeOperationalCondition } from "./accidentalCondition.js";
 import { SPEED_CONVENTION } from "./rules/planetarySpeed.js";
+import { computeSectConditionDetail } from "./hayzHalb.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -70,7 +71,16 @@ export function buildClassicalChart({ chart, astroTime, latitude, longitude }) {
       phase3bCondition: condition,
     });
 
-    return { ...dignityResult, condition, operationalCondition };
+    const sectConditionDetail = computeSectConditionDetail({
+      sign: p.sign.key,
+      chartSect: sect,
+      effectiveSect: condition.sect.effectiveSect,
+      isOfSect: condition.sect.isOfSect,
+      isAboveHorizon: condition.horizon.isAboveHorizon,
+      altitudeDegrees: condition.horizon.altitude,
+    });
+
+    return { ...dignityResult, condition, operationalCondition, sectConditionDetail };
   });
 
   return {
