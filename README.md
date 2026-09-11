@@ -569,6 +569,19 @@ so this project uses 59'08"/day for both, matching Lilly's original table
 and most modern traditional software's default. The alternative is
 documented in `rules/planetarySpeed.js` but not used.
 
+**Mercury and Venus swift/slow classification follows William Lilly's
+Christian Astrology convention using 59′08″/day as the reference motion.**
+
+This convention is stored **permanently in the calculation output itself**,
+not only in comments/README: every traditional planet's
+`operationalCondition.speed` carries `speedConvention: "william_lilly"`
+and a human-readable `referenceMeanSpeedFormatted` string (e.g.
+`"59′08″/day"`, `"13°10′36″/day"`), and `chart.classical.meta` carries the
+same `speedConvention: "william_lilly"` value. The other Lilly reference
+mean motions currently in use, all under this same convention: Sun
+59′08″/day, Moon 13°10′36″/day, Mars 31′27″/day, Jupiter 04′59″/day,
+Saturn 02′01″/day (matching `REFERENCE_MEAN_SPEED_FORMATTED` exactly).
+
 **Stationary status**: still not implemented (Phase 3B's decision stands
 unchanged) — no planet-specific, sourced threshold was found for this
 phase either. Raw `longitudeSpeed` remains available regardless.

@@ -10,6 +10,7 @@
 import { computeEssentialDignity, TRADITIONAL_PLANETS } from "./essentialDignity.js";
 import { computePlanetaryCondition } from "./planetaryCondition.js";
 import { computeOperationalCondition } from "./accidentalCondition.js";
+import { SPEED_CONVENTION } from "./rules/planetarySpeed.js";
 
 export const CLASSICAL_META = {
   zodiacType: "tropical",
@@ -17,6 +18,7 @@ export const CLASSICAL_META = {
   triplicitySystem: "dorothean",
   termSystem: "egyptian",
   faceSystem: "chaldean",
+  speedConvention: SPEED_CONVENTION,
 };
 
 /**

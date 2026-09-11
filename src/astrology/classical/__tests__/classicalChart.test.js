@@ -20,6 +20,7 @@ describe("Classical chart integration (verification case)", () => {
       triplicitySystem: "dorothean",
       termSystem: "egyptian",
       faceSystem: "chaldean",
+      speedConvention: "william_lilly",
     });
   });
 

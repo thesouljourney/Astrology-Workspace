@@ -46,21 +46,47 @@
  * and Venus, matching Lilly's original table exactly and matching what
  * most modern traditional-astrology software defaults to. The
  * Goldstein-Jacobson alternative is documented here but not used.
+ *
+ * PERMANENT PROVENANCE (this refinement): the chosen convention is not
+ * only documented in comments/README — every speed result below also
+ * carries `speedConvention: "william_lilly"` and a human-readable
+ * `referenceMeanSpeedFormatted` string, and `chart.classical.meta` carries
+ * the same `speedConvention` value, so the convention used is always
+ * recoverable from the calculation output itself, not just prose.
  */
 
-function dms(deg, min, sec) {
+const MEAN_MOTION_DMS = {
+  sun: { deg: 0, min: 59, sec: 8 },
+  moon: { deg: 13, min: 10, sec: 36 },
+  // Lilly's "triune system" rate, same as the Sun — disputed by
+  // Goldstein-Jacobson; project owner explicitly chose Lilly's, see
+  // module doc comment above.
+  mercury: { deg: 0, min: 59, sec: 8 },
+  venus: { deg: 0, min: 59, sec: 8 },
+  mars: { deg: 0, min: 31, sec: 27 },
+  jupiter: { deg: 0, min: 4, sec: 59 },
+  saturn: { deg: 0, min: 2, sec: 1 },
+};
+
+export const SPEED_CONVENTION = "william_lilly";
+
+function toDecimalDegrees({ deg, min, sec }) {
   return deg + min / 60 + sec / 3600;
 }
 
-export const REFERENCE_MEAN_SPEED = {
-  sun: dms(0, 59, 8),
-  moon: dms(13, 10, 36),
-  mercury: dms(0, 59, 8), // Lilly's "triune system" rate — disputed by Goldstein-Jacobson; project owner chose Lilly's, see module doc comment
-  venus: dms(0, 59, 8), // same as above
-  mars: dms(0, 31, 27),
-  jupiter: dms(0, 4, 59),
-  saturn: dms(0, 2, 1),
-};
+function formatMeanMotion({ deg, min, sec }) {
+  const mm = String(min).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return deg > 0 ? `${deg}°${mm}′${ss}″/day` : `${mm}′${ss}″/day`;
+}
+
+export const REFERENCE_MEAN_SPEED = Object.fromEntries(
+  Object.entries(MEAN_MOTION_DMS).map(([key, value]) => [key, toDecimalDegrees(value)])
+);
+
+export const REFERENCE_MEAN_SPEED_FORMATTED = Object.fromEntries(
+  Object.entries(MEAN_MOTION_DMS).map(([key, value]) => [key, formatMeanMotion(value)])
+);
 
 /**
  * @param {string} planetKey
@@ -69,11 +95,14 @@ export const REFERENCE_MEAN_SPEED = {
  *   longitudeSpeed: number,
  *   absoluteSpeed: number,
  *   referenceMeanSpeed: number|null,
- *   status: "swift"|"slow"|"mean"|null
+ *   referenceMeanSpeedFormatted: string|null,
+ *   status: "swift"|"slow"|"mean"|null,
+ *   speedConvention: "william_lilly"
  * }}
  */
 export function computeSpeedCondition(planetKey, longitudeSpeed) {
   const referenceMeanSpeed = REFERENCE_MEAN_SPEED[planetKey] ?? null;
+  const referenceMeanSpeedFormatted = REFERENCE_MEAN_SPEED_FORMATTED[planetKey] ?? null;
   const absoluteSpeed = Math.abs(longitudeSpeed);
 
   let status = null;
@@ -83,5 +112,12 @@ export function computeSpeedCondition(planetKey, longitudeSpeed) {
     else status = "mean";
   }
 
-  return { longitudeSpeed, absoluteSpeed, referenceMeanSpeed, status };
+  return {
+    longitudeSpeed,
+    absoluteSpeed,
+    referenceMeanSpeed,
+    referenceMeanSpeedFormatted,
+    status,
+    speedConvention: SPEED_CONVENTION,
+  };
 }
