@@ -3,6 +3,7 @@ import { calculateChart } from "./astrology/ephemeris.js";
 import { formatDMS } from "./utils/formatDegree.js";
 import { formatHouseLabel } from "./utils/houseLabel.js";
 import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
+import ModernWestern from "./components/ModernWestern.jsx";
 import "./App.css";
 
 const DEFAULT_INPUT = {
@@ -12,6 +13,8 @@ const DEFAULT_INPUT = {
   longitude: "102.9325",
   utcOffset: "+08:00",
   houseSystem: "placidus",
+  nodeType: "true",
+  lilithType: "mean",
 };
 
 function App() {
@@ -105,6 +108,22 @@ function App() {
                 {sys[0].toUpperCase() + sys.slice(1)}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="nodeType">Node Type｜交点类型</label>
+          <select id="nodeType" value={input.nodeType} onChange={handleChange("nodeType")}>
+            <option value="true">True Node｜真交点</option>
+            <option value="mean">Mean Node｜平交点</option>
+          </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="lilithType">Lilith Type｜莉莉丝类型</label>
+          <select id="lilithType" value={input.lilithType} onChange={handleChange("lilithType")}>
+            <option value="mean">Mean｜平位</option>
+            <option value="true">True/Osculating｜真位（密切）</option>
           </select>
         </div>
 
@@ -208,6 +227,8 @@ function App() {
               ))}
             </tbody>
           </table>
+
+          <ModernWestern chart={chart} />
         </section>
       )}
     </div>

@@ -11,6 +11,7 @@ import { convertLocalBirthTimeToUTC, calculateJulianDay } from "./time.js";
 import { computePlanetPositions } from "./planets.js";
 import { computeHouseCusps, getHouseForLongitude, SUPPORTED_HOUSE_SYSTEMS } from "./houses.js";
 import { getZodiacSign, normalizeDegrees } from "./zodiac.js";
+import { buildModernWesternPoints } from "./modernWestern.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -102,16 +103,32 @@ export function calculateChart(input) {
     return { house: i + 1, longitude: normalizeDegrees(longitude), sign, degreeInSign };
   });
 
+  const nodeType = input.nodeType || "true";
+  const lilithType = input.lilithType || "mean";
+
+  const points = buildModernWesternPoints({
+    astroTime,
+    latitude,
+    longitude,
+    houses,
+    planetsWithSignAndHouse,
+    nodeType,
+    lilithType,
+  });
+
   return {
     meta: {
       utcDate,
       utcIso: utcDate.toISOString(),
       julianDay,
       houseSystem,
+      nodeType,
+      lilithType,
       input,
     },
     planets: planetsWithSignAndHouse,
     angles,
     houseCusps,
+    points,
   };
 }

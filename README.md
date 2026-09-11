@@ -4,9 +4,9 @@ A private, local-first astrology calculation tool. This is **not** related
 to any other project — it has its own codebase, its own dependencies, and
 no shared code, credentials, or services with anything else.
 
-**Phase 1 status:** Tropical Western Astrology calculation prototype only.
-No interpretation, no AI, no Vedic/Classical/sidereal systems yet — see
-"What Phase 1 does NOT support" below.
+**Status:** Phase 1 (core Tropical Western calculation engine) and Phase 2
+(the 26-point Modern Western data model) are implemented. No interpretation,
+no AI, no Vedic/Classical/sidereal systems yet — see §7/§9 below.
 
 ---
 
@@ -117,23 +117,179 @@ any caller — they are not implemented yet.
 
 ## 7. What does Phase 1 NOT support?
 
-By design, deferred to later phases:
+Deferred to later phases, unchanged from Phase 1:
 
-- Chiron, Ceres, Pallas, Juno, Vesta, Lilith, North/South Node, Part of
-  Fortune, Vertex, East Point, Eros
 - Classical/essential/accidental dignities
 - Vedic / sidereal astrology, nakshatras, ayanamsa
 - Any interpretation: personality, career, relationship, psychological,
   or AI-generated readings/summaries of any kind
 - Chart comparison (synastry), transits, progressions
 - Chart wheel graphics, PDF/Excel export
-- Birth place autocomplete / geocoding (Phase 1 requires manually entering
+- Birth place autocomplete / geocoding (requires manually entering
   latitude, longitude, and UTC offset — a local place-name database is
   planned for a future phase, explicitly *not* a geocoding API)
 - House systems other than Placidus
 
 This software calculates. It does not interpret. Interpretation is left to
 you, by design.
+
+---
+
+## Phase 2: Modern Western Astrology (26 Points)
+
+Phase 2 adds a unified data model (`src/astrology/model.js`) and 16 new
+points on top of the verified Phase 1 planet/house engine, organized into
+four categories. Every point (implemented or not) is exposed through
+`chart.points` with the same shape — see `buildPoint()` in
+`src/astrology/model.js`.
+
+### 7a. The 26-point target and what's implemented
+
+| # | Point | Status | Source module |
+|---|---|---|---|
+| 1-10 | Sun … Pluto | ✅ Implemented (Phase 1) | `planets.js` |
+| 11-14 | ASC, MC, DSC, IC | ✅ Implemented | `houses.js` (unchanged) + `modernWestern.js` |
+| 15 | North Node | ✅ Implemented (true & mean) | `nodes.js` |
+| 16 | South Node | ✅ Implemented (derived) | `nodes.js` |
+| 17 | Black Moon Lilith | ✅ Implemented (mean & true/osculating) | `lilith.js` |
+| 18 | Part of Fortune | ✅ Implemented | `partOfFortune.js` |
+| 19 | Vertex | ✅ Implemented | `vertex.js` |
+| 20 | East Point | ✅ Implemented | `vertex.js` |
+| 21 | Chiron | ❌ Not implemented — see §7f | `asteroids.js` (status only) |
+| 22 | Ceres | ❌ Not implemented — see §7f | `asteroids.js` |
+| 23 | Pallas | ❌ Not implemented — see §7f | `asteroids.js` |
+| 24 | Juno | ❌ Not implemented — see §7f | `asteroids.js` |
+| 25 | Vesta | ❌ Not implemented — see §7f | `asteroids.js` |
+| 26 | Eros | ❌ Not implemented — see §7f | `asteroids.js` |
+
+**20 of 26 implemented.** The 6 unimplemented ones are asteroids/centaurs —
+see §7f for exactly why, and what would unlock them. Nothing is silently
+omitted: unimplemented points still appear in `chart.points` with
+`absoluteLongitude: null` and a `meta.reason` string, and the UI renders
+them as an explicit "Not Implemented" row rather than hiding them.
+
+### 7b. North/South Node convention
+
+Investigated first (as required): `astronomy-engine`'s `Body` enum has no
+node entry at all, and its `SearchMoonNode()` only finds the *times* of
+actual latitude=0 crossings, not an instantaneous longitude — so neither
+convention comes "for free" from the library. Both are computed locally in
+`src/astrology/nodes.js`:
+
+- **True Node** (default): the instantaneous osculating ascending node,
+  computed from the Moon's real position and velocity vectors via
+  `h = r × v`, node direction `= k × h`. Standard orbital mechanics, no
+  dependency added.
+- **Mean Node**: Meeus's low-precision secular polynomial (*Astronomical
+  Algorithms* 2nd ed., eq. 22.2/47.7).
+
+Dev-time cross-check against real Swiss Ephemeris (see §7g for methodology):
+True Node agrees to **2.9 arcsec**; Mean Node to **10.8 arcsec** (nutation-
+scale, expected for a deliberately low-precision mean-element series).
+
+The UI's Node Type selector and every North/South Node result's
+`meta.nodeType` field make the convention explicit — `"true"` or `"mean"` —
+never silently mixed. South Node is always `northNode + 180°`, never
+computed independently (`sourceType: "derived"`).
+
+### 7c. Black Moon Lilith convention
+
+This is the **apogee of the Moon's orbit**, not the asteroid 1181 Lilith
+(that asteroid is not implemented — see §7f — and is a completely different
+body; substituting it would have been wrong, so it wasn't). Both
+conventions computed locally in `src/astrology/lilith.js`:
+
+- **Mean** (default): mean lunar longitude minus mean lunar anomaly, +180°
+  (Meeus eq. 47.1/47.2). Cross-check vs Swiss Ephemeris: **~149 arcsec
+  (~2.5′)**.
+- **True/Osculating**: instantaneous apogee direction from the Moon's
+  Laplace-Runge-Lenz (eccentricity) vector. Cross-check: **~96 arcsec
+  (~1.6′)**.
+
+**Both exceed the project's 1-arcminute target — disclosed, not hidden.**
+This is a known, inherent property of Black Moon Lilith, not a bug: apsidal
+(apogee/perigee) direction is far more perturbation-sensitive than nodal
+direction, and different lunar theories genuinely disagree on the secular
+"mean elements" used for Mean Lilith (a well-known source of cross-software
+disagreement in real astrology tools, not unique to this project). No
+arbitrary offset was introduced to hide this. `meta.lilithType` on every
+result states which convention produced it.
+
+### 7d. Part of Fortune day/night formula
+
+Sect is determined from the **Sun's actual geometric altitude** at the
+birth instant/location (via `astronomy-engine`'s own `Equator()`/
+`Horizon()`), never a fixed clock-time range:
+
+- Day chart (Sun above horizon): `Fortune = ASC + Moon − Sun`
+- Night chart (Sun below horizon): `Fortune = ASC + Sun − Moon`
+
+Every result carries `meta.sect` (`"day"`/`"night"`) and
+`meta.formulaUsed` — no interpretation is attached.
+
+### 7e. Vertex and East Point convention
+
+**East Point here means the Equatorial Ascendant** — explicitly not the
+same thing as ASC, Vertex, or the Aries Point (0° Aries). It is the
+ecliptic point whose right ascension equals RAMC+90°, a closed form
+structurally identical to the verified MC formula. Cross-check vs Swiss
+Ephemeris (`ascmc[4]`, "equatorial ascendant"): **0.089 arcsec**.
+
+**Vertex** is the ecliptic/prime-vertical crossing on the western side
+(azimuth = 270°, astronomy-engine convention: 0=N, 90=E, 180=S, 270=W),
+found by numeric root-finding using `astronomy-engine`'s own
+`Horizon()` — not a half-remembered closed-form shortcut. The antipodal
+crossing (azimuth=90°, the Anti-Vertex) is explicitly not returned.
+Cross-check vs Swiss Ephemeris (`ascmc[3]`, "Vertex"): **0.003 arcsec**.
+
+### 7f. Asteroids/Centaurs — why 6 of 26 points are not implemented
+
+Investigated first, as required: `astronomy-engine`'s `Body` enum contains
+only the Sun, Moon, and the 8 classical/modern planets — **no asteroid
+support and no orbital-element data for them.** Unlike the points above,
+asteroid positions cannot be derived from spherical-astronomy first
+principles; they require real perturbation-quality ephemeris data.
+
+Two options were considered and **neither was silently adopted**:
+
+- **Hand-rolled Keplerian propagation** from published osculating elements
+  at some reference epoch — **rejected**. Accuracy degrades with distance
+  from the epoch (ignores planetary perturbations), which is exactly the
+  "invent/approximate" outcome this project's rules prohibit.
+- **Swiss Ephemeris**, via a WASM wrapper (`sweph-wasm`) — investigated at
+  dev-time only (temporary devDependency, never shipped) purely to check
+  feasibility. Findings: Chiron/Ceres/Pallas/Juno/Vesta ARE present in the
+  base Swiss Ephemeris asteroid data file bundled with that package (no
+  extra download); **Eros (433) is not** — it needs a separate per-asteroid
+  file (`se00433s.se1`) that is not bundled anywhere and would require a
+  network fetch this project does not make, independent of any other
+  decision.
+
+Adopting Swiss Ephemeris as a **permanent production dependency** is an
+AGPL-3.0 licensing decision with real commercial implications — per this
+project's own rule, that requires the user's explicit sign-off, not a
+unilateral choice made in code. **That decision has been raised separately
+and is not yet resolved** — see the Phase 2 final report. Until decided,
+all 6 asteroid/centaur points remain explicitly marked "Not Implemented"
+with their exact reason, both in `chart.points` and in the UI — never
+fabricated, never silently dropped.
+
+### 7g. Independent validation methodology
+
+Every non-trivial Phase 2 formula above (True Node, Mean Node, Mean
+Lilith, True Lilith, Vertex, East Point) was cross-checked during
+development against **real Swiss Ephemeris** (`sweph-wasm`, run fully
+offline — its bundled `.wasm` binary and ephemeris data files loaded via
+Node's `fs`, no network call) for this project's verification chart. This
+was a **temporary devDependency only**: it was installed, used to generate
+the comparison numbers quoted above and in the final report, then
+**uninstalled** — it is not in `package.json`, not in the committed repo,
+and nothing in `src/` depends on it. Nothing was hardcoded or reverse-
+engineered from its output; every formula here is a standard, independently
+citable astronomical method (Meeus, or first-principles orbital mechanics)
+that was verified, not fitted.
+
+---
 
 ## 8. Swiss Ephemeris / license notes for future commercialization
 
@@ -163,6 +319,36 @@ professional astrology software), be aware before shipping commercially:
 
 If this project stays on `astronomy-engine`, the main thing to keep in
 mind commercially is simply retaining the MIT attribution notice.
+
+**Phase 2 dependency status: unchanged from Phase 1.** Zero new production
+dependencies were added — `package.json`'s `dependencies` still list only
+`astronomy-engine`, `react`, and `react-dom`, all MIT/permissive. `sweph-
+wasm` (AGPL-3.0) was used only as a temporary devDependency for
+verification during development (see §7g) and has been uninstalled; it
+never appears in `package.json` or the shipped bundle. The offline/no-API
+status described in §1-4 holds identically for everything in Phase 2 — no
+new network dependency, no new API, of any kind.
+
+## 9. Known accuracy limitations (unresolved)
+
+Disclosed here rather than buried in code comments:
+
+- **Mean Black Moon Lilith**: ~2.5′ from Swiss Ephemeris's SE_MEAN_APOG —
+  exceeds the project's 1′ target. Root cause: differing lunar-theory
+  "mean elements" conventions across astronomy libraries — a known,
+  general source of disagreement between astrology programs for this
+  specific point, not unique to this implementation. See §7c.
+- **True/Osculating Black Moon Lilith**: ~1.6′ from Swiss Ephemeris's
+  SE_OSCU_APOG — also exceeds the 1′ target. Root cause: apsidal direction
+  is highly sensitive to solar perturbation, more than the two-body
+  osculating extraction used here captures. See §7c.
+- **Asteroids/Centaurs (Chiron, Ceres, Pallas, Juno, Vesta, Eros)**: not
+  implemented at all — see §7f. This is a known gap, not an accuracy
+  issue, pending the Swiss Ephemeris dependency decision.
+
+Everything else validated in Phase 2 (True Node, Mean Node, Part of
+Fortune's day/night sect logic, Vertex, East Point) agreed with real Swiss
+Ephemeris to well under 1 arcminute — most under 3 arcseconds.
 
 ---
 

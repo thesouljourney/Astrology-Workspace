@@ -128,3 +128,45 @@ th {
 .direct {
   color: #2a6f2a;
 }
+
+.modern-western {
+  margin-top: 40px;
+  border-top: 3px double #333;
+  padding-top: 8px;
+}
+
+.modern-western h3 {
+  margin-top: 20px;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.not-implemented {
+  color: #888;
+  font-style: italic;
+}
+
+.raw-data {
+  margin-top: 24px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.raw-data summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.raw-data table {
+  font-size: 0.75rem;
+}
+
+.meta-cell {
+  font-family: monospace;
+  font-size: 0.7rem;
+  max-width: 240px;
+  overflow-wrap: break-word;
+}
