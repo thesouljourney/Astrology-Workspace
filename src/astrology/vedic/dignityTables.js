@@ -222,8 +222,18 @@ export const MOOLATRIKONA = {
   saturn: { rashiKey: "aquarius", startDegree: 0, endDegree: 20, textLabel: "0-20" },
 };
 
-/** Precedence for the single display field `rashiDignityStatus` (Part F), strongest first. */
-export const DIGNITY_STATUS_PRECEDENCE = [
+/**
+ * Reference only: the classical Shadbala Sthana Bala STRENGTH ordering
+ * (strongest to weakest numeric strength value) - Exaltation > Moolatrikona
+ * > Own Sign > Friend > Neutral > Enemy > Debilitation. This project does
+ * NOT compute Shadbala (Part N) and, per the Phase 4D pre-lock precedence
+ * audit, this ordering is NOT used to pick `rashiDignityStatus` - using a
+ * STRENGTH ordering as a DISPLAY-COLLAPSE precedence was found to
+ * misrepresent Moolatrikona (see `DIGNITY_LABEL_SPECIFICITY_PRECEDENCE`
+ * below, and `condition.js`'s module doc comment, for the corrected
+ * precedence and why this one is wrong for that purpose).
+ */
+export const SHADBALA_STRENGTH_ORDER_REFERENCE_ONLY = [
   "exaltation",
   "moolatrikona",
   "own_sign",
@@ -232,6 +242,31 @@ export const DIGNITY_STATUS_PRECEDENCE = [
   "enemy_sign",
   "debilitation",
 ];
+
+/**
+ * Precedence audit (pre-lock): the ordering actually used to pick the
+ * single `rashiDignityStatus` summary label, when more than one
+ * categorical dignity boolean is true at once. Ordered by SPECIFICITY
+ * of the underlying fact (narrowest/most-specific first), never by
+ * classical strength - see `condition.js`'s module doc comment for the
+ * full audit finding (the previous exaltation-over-moolatrikona
+ * ordering silently hid Moolatrikona for Moon/Mercury, the two planets
+ * whose Moolatrikona sits inside their own exaltation sign).
+ */
+export const DIGNITY_LABEL_SPECIFICITY_PRECEDENCE = [
+  "exact_exaltation_point",
+  "moolatrikona",
+  "exaltation",
+  "own_sign",
+  "exact_debilitation_point",
+  "debilitation",
+  "friend_sign",
+  "neutral_sign",
+  "enemy_sign",
+];
+
+/** How the single `rashiDignityStatus` field is derived, and how transparency is preserved for every simultaneously-true dignity fact. */
+export const DIGNITY_DISPLAY_POLICY = "most_specific_dignity_label_primary_with_full_dignity_labels_array";
 
 /** Naisargika Maitri — natural planetary friendship (Part G). Deliberately asymmetric in places; see module doc comment. */
 export const NATURAL_RELATIONSHIPS = {

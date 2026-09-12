@@ -39,14 +39,34 @@ function grahaDisplayLabel(englishName) {
 }
 
 const DIGNITY_STATUS_LABEL = {
-  exaltation: "Exaltation｜擢升",
+  exact_exaltation_point: "Exact Exaltation Point｜擢升精确点",
   moolatrikona: "Moolatrikona",
+  exaltation: "Exaltation｜擢升",
   own_sign: "Own Sign｜自己星座",
+  exact_debilitation_point: "Exact Debilitation Point｜落陷精确点",
+  debilitation: "Debilitation｜落陷",
   friend_sign: "Friend's Sign｜友宫",
   neutral_sign: "Neutral Sign｜中立宫",
   enemy_sign: "Enemy's Sign｜敌宫",
-  debilitation: "Debilitation｜落陷",
 };
+
+/**
+ * Every simultaneously-true CATEGORICAL dignity label (never just the
+ * single collapsed `rashiDignityStatus`), joined for display - per the
+ * Phase 4D dignity-display-precedence audit, a placement such as
+ * Mercury at 17 Virgo is genuinely both "Moolatrikona" AND "Exaltation"
+ * AND "Own Sign" at once, and hiding any of those behind a single label
+ * would misrepresent the technical record. The relational labels
+ * (friend/neutral/enemy sign) are intentionally excluded here since the
+ * separate Relationship column already shows that fact.
+ */
+const RELATIONAL_DIGNITY_LABELS = new Set(["friend_sign", "neutral_sign", "enemy_sign"]);
+
+function categoricalDignityLabels(dignity) {
+  const categorical = dignity.dignityLabels.filter((label) => !RELATIONAL_DIGNITY_LABELS.has(label));
+  if (categorical.length === 0) return "—";
+  return categorical.map((label) => DIGNITY_STATUS_LABEL[label] ?? label).join(", ");
+}
 
 const RELATIONSHIP_LABEL = {
   self: "Self｜自己",
@@ -377,7 +397,7 @@ export default function VedicAstrology({ chart }) {
               <tr key={key}>
                 <td>{grahaLabel(key)}</td>
                 <td>{RASHI_LABEL[p.rashi] ?? p.rashi}</td>
-                <td>{DIGNITY_STATUS_LABEL[p.dignity.rashiDignityStatus] ?? p.dignity.rashiDignityStatus}</td>
+                <td>{categoricalDignityLabels(p.dignity)}</td>
                 <td>{p.dignity.isMoolatrikona ? "Yes｜是" : "—"}</td>
                 <td>{grahaDisplayLabel(p.signRelationship.signLord)}</td>
                 <td>{RELATIONSHIP_LABEL[p.signRelationship.naturalRelationshipToSignLord] ?? p.signRelationship.naturalRelationshipToSignLord}</td>

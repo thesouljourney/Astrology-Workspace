@@ -2237,7 +2237,84 @@ source/table convention, textual wording included).
 audit changes nothing about that chart's output — confirmed by dedicated
 test comparing before/after. Six new tests were added covering all 12
 audited points plus the exact-point/no-widening and metadata checks. All
-527 tests pass (521 prior + 6 new). Phase 4D can now be safely locked.
+527 tests pass (521 prior + 6 new).
+
+### 22.2 Pre-lock audit: dignity-status overlap and display precedence
+
+A second, immediately-following pre-lock audit re-examined the *display*
+side of the same overlap: with §22.1's fix in place, Moon (anywhere in
+Taurus) and Mercury (anywhere in Virgo) could be simultaneously
+`isExaltedSign: true` AND `isMoolatrikona: true` — and the original
+`rashiDignityStatus` precedence (**Exaltation > Moolatrikona > Own Sign >
+Debilitation**, borrowed directly from the classical Shadbala Sthana
+Bala *strength* ordering) always picked `"exaltation"` in that case,
+because `isExaltedSign` is a coarse, whole-sign fact that is true across
+the *entire* sign, while `isMoolatrikona` is a narrower, more specific
+sub-zone fact. The result: Mercury at 17° Virgo — deep inside its own
+Moolatrikona zone — showed only `"exaltation"`, never revealing
+Moolatrikona in the summary label at all. Confirmed empirically across
+Moon/Taurus 3°/10°/29° and Mercury/Virgo 15°/17°/25° before any code
+changed; confirmed this masking does **not** affect the other five
+planets, whose Moolatrikona sits inside their *own* sign rather than
+their exaltation sign (there, the already-correct Moolatrikona > Own
+Sign ordering already surfaced it).
+
+**Root cause**: using a classical *strength* ordering as a *display-
+collapse* precedence is a category error — strength orderings rank
+numeric Shadbala contribution (irrelevant here, since this project never
+computes Shadbala), not which categorical fact is most informative to
+show first.
+
+**Resolution — two complementary, non-destructive fixes:**
+
+1. **Full transparency** (`dignity.dignityLabels`): every applicable
+   categorical dignity label that is currently true is now listed
+   together, never collapsed to one — e.g. Mercury at 17° Virgo now
+   reports `["moolatrikona", "exaltation", "own_sign"]`. Nothing is ever
+   hidden, regardless of which label is treated as "primary."
+2. **Corrected precedence** for the single convenience field
+   `rashiDignityStatus` (= `dignityLabels[0]`), now ordered by
+   *specificity* of the underlying fact rather than classical strength:
+   `exact exaltation point > Moolatrikona > exaltation (whole sign) >
+   own sign > exact debilitation point > debilitation (whole sign) >
+   friend/neutral/enemy sign`. Two new booleans support the top tier:
+   `isExactExaltationPoint` / `isExactDebilitationPoint` (true only at
+   the single, measure-zero exact degree — confirmed by test never to
+   widen into a range). Under this precedence, Mercury at 17° Virgo now
+   correctly reports `rashiDignityStatus: "moolatrikona"`.
+
+All six raw booleans (`isOwnSign`, `isExaltedSign`, `isDebilitatedSign`,
+`isMoolatrikona`, `isExactExaltationPoint`, `isExactDebilitationPoint`)
+remain fully independent and are never made mutually exclusive —
+confirmed by dedicated test that all four can be simultaneously true for
+Mercury at its own exact exaltation degree. A debilitated placement
+whose sign-lord happens to be a natural friend (e.g. the verification
+chart's own Mars, debilitated in Cancer, ruled by its friend the Moon)
+now visibly shows *both* `"debilitation"` and `"friend_sign"` in
+`dignityLabels`, rather than silently favoring one.
+
+**UI**: the Planetary Condition table's Dignity column now lists every
+simultaneously-true *categorical* dignity (Moolatrikona, Exaltation, Own
+Sign, etc. — joined, e.g. "Moolatrikona, Own Sign") rather than a single
+collapsed word; the relational labels (friend/neutral/enemy sign) are
+left to the existing, separate Relationship column to avoid duplication.
+Verified in-browser at desktop and 390px mobile width: no console
+errors, no horizontal overflow.
+
+New metadata: `dignityDisplayPolicy:
+"most_specific_dignity_label_primary_with_full_dignity_labels_array"`
+(added to both `chart.vedic.meta` and `chart.vedic.condition.meta`).
+`dignityTables.js` now separately documents the classical Shadbala
+strength ordering (`SHADBALA_STRENGTH_ORDER_REFERENCE_ONLY`, kept for
+reference/citation only, never used for display) from the corrected
+specificity-based ordering actually used
+(`DIGNITY_LABEL_SPECIFICITY_PRECEDENCE`).
+
+**No verification-chart change**: none of the seven classical Grahas
+sits in its own exaltation sign in the locked verification chart, so
+every `rashiDignityStatus` value is byte-for-byte unchanged — confirmed
+by dedicated test. Six new tests were added. All 533 tests pass (527
+prior + 6 new). Phase 4D can now be safely locked.
 
 ---
 

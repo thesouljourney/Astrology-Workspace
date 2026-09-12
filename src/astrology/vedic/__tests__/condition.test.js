@@ -184,25 +184,31 @@ describe("PRE-LOCK AUDIT: no artificial one-degree gap after the exact exaltatio
 
   it("Moon in Taurus at the 6 audited points: 2d59m59s, 3d00m00s, 3d00m01s, 3d30m00s, 3d59m59s, 4d00m00s", () => {
     const taurusIndex = RASHIS.find((r) => r.key === "taurus").index;
+    // Per the DIGNITY-DISPLAY-PRECEDENCE audit (see condition.js's module
+    // doc comment), the display status is no longer unconditionally
+    // "exaltation" throughout the whole sign - it now correctly surfaces
+    // "exact_exaltation_point" at the single exact instant, and
+    // "moolatrikona" (a more specific fact than the whole-sign
+    // "exaltation") from that same instant onward, since Moolatrikona now
+    // starts exactly at the exact exaltation degree with no gap.
     const points = [
-      { label: "2d59m59s", deg: dms(2, 59, 59) },
-      { label: "3d00m00s", deg: dms(3, 0, 0) },
-      { label: "3d00m01s", deg: dms(3, 0, 1) },
-      { label: "3d30m00s", deg: dms(3, 30, 0) },
-      { label: "3d59m59s", deg: dms(3, 59, 59) },
-      { label: "4d00m00s", deg: dms(4, 0, 0) },
+      { label: "2d59m59s", deg: dms(2, 59, 59), expectedStatus: "exaltation" },
+      { label: "3d00m00s", deg: dms(3, 0, 0), expectedStatus: "exact_exaltation_point" },
+      { label: "3d00m01s", deg: dms(3, 0, 1), expectedStatus: "moolatrikona" },
+      { label: "3d30m00s", deg: dms(3, 30, 0), expectedStatus: "moolatrikona" },
+      { label: "3d59m59s", deg: dms(3, 59, 59), expectedStatus: "moolatrikona" },
+      { label: "4d00m00s", deg: dms(4, 0, 0), expectedStatus: "moolatrikona" },
     ];
-    for (const { label, deg } of points) {
+    for (const { label, deg, expectedStatus } of points) {
       const r = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, deg) }) }).planets.moon;
       // Every one of the 6 points is inside Taurus, Moon's exaltation sign -
-      // isExaltedSign is a whole-sign dignity, so it is true throughout.
+      // isExaltedSign is a whole-sign dignity, so it is true throughout,
+      // and it always appears in dignityLabels even when not primary.
       expect(r.dignity.isExaltedSign).toBe(true);
       expect(r.dignity.isOwnSign).toBe(false); // Moon's own sign is Cancer, never Taurus
-      // The display status is always "exaltation" throughout the whole sign
-      // regardless of Moolatrikona, per the documented precedence - this was
-      // true before AND after the audit fix, for every one of these 6 points.
-      expect(r.dignity.rashiDignityStatus).toBe("exaltation");
-      // isMoolatrikona is now true from the exact exaltation degree (3.0) onward -
+      expect(r.dignity.rashiDignityStatus).toBe(expectedStatus);
+      expect(r.dignity.dignityLabels).toContain("exaltation");
+      // isMoolatrikona is true from the exact exaltation degree (3.0) onward -
       // no point at or after 3d00m00s should ever be excluded (label !== "2d59m59s").
       expect(r.dignity.isMoolatrikona).toBe(label !== "2d59m59s");
     }
@@ -211,20 +217,23 @@ describe("PRE-LOCK AUDIT: no artificial one-degree gap after the exact exaltatio
   it("Mercury in Virgo at the 6 audited points: 14d59m59s, 15d00m00s, 15d00m01s, 15d30m00s, 15d59m59s, 16d00m00s", () => {
     const virgoIndex = RASHIS.find((r) => r.key === "virgo").index;
     const points = [
-      { label: "14d59m59s", deg: dms(14, 59, 59) },
-      { label: "15d00m00s", deg: dms(15, 0, 0) },
-      { label: "15d00m01s", deg: dms(15, 0, 1) },
-      { label: "15d30m00s", deg: dms(15, 30, 0) },
-      { label: "15d59m59s", deg: dms(15, 59, 59) },
-      { label: "16d00m00s", deg: dms(16, 0, 0) },
+      { label: "14d59m59s", deg: dms(14, 59, 59), expectedStatus: "exaltation" },
+      { label: "15d00m00s", deg: dms(15, 0, 0), expectedStatus: "exact_exaltation_point" },
+      { label: "15d00m01s", deg: dms(15, 0, 1), expectedStatus: "moolatrikona" },
+      { label: "15d30m00s", deg: dms(15, 30, 0), expectedStatus: "moolatrikona" },
+      { label: "15d59m59s", deg: dms(15, 59, 59), expectedStatus: "moolatrikona" },
+      { label: "16d00m00s", deg: dms(16, 0, 0), expectedStatus: "moolatrikona" },
     ];
-    for (const { label, deg } of points) {
+    for (const { label, deg, expectedStatus } of points) {
       const r = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, deg) }) }).planets.mercury;
       // Virgo is simultaneously Mercury's OWN sign and its exaltation sign -
-      // both are whole-sign dignities and both are true throughout.
+      // both are whole-sign dignities and both are true throughout, and
+      // both always appear in dignityLabels even when not primary.
       expect(r.dignity.isExaltedSign).toBe(true);
       expect(r.dignity.isOwnSign).toBe(true);
-      expect(r.dignity.rashiDignityStatus).toBe("exaltation"); // outranks own_sign too
+      expect(r.dignity.rashiDignityStatus).toBe(expectedStatus);
+      expect(r.dignity.dignityLabels).toContain("exaltation");
+      expect(r.dignity.dignityLabels).toContain("own_sign");
       expect(r.dignity.isMoolatrikona).toBe(label !== "14d59m59s");
     }
   });
@@ -689,5 +698,86 @@ describe("Verification-chart condition totals reconcile", () => {
       expect(condition.nodes[key]).toHaveProperty("rashi");
       expect(condition.nodes[key]).toHaveProperty("isRetrograde");
     }
+  });
+});
+
+describe("PRE-LOCK AUDIT 2: dignity-status overlap and display precedence", () => {
+  it("Part C: isOwnSign/isExaltedSign/isDebilitatedSign/isMoolatrikona/isExactExaltationPoint/isExactDebilitationPoint remain independent booleans, never forced mutually exclusive", () => {
+    // Mercury at its own exact exaltation degree (15 Virgo) is simultaneously:
+    // own sign, exalted sign, Moolatrikona, AND the exact exaltation point -
+    // four independent true facts at once, none suppressing another.
+    const virgoIndex = RASHIS.find((r) => r.key === "virgo").index;
+    const r = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 15) }) }).planets.mercury;
+    expect(r.dignity.isOwnSign).toBe(true);
+    expect(r.dignity.isExaltedSign).toBe(true);
+    expect(r.dignity.isMoolatrikona).toBe(true);
+    expect(r.dignity.isExactExaltationPoint).toBe(true);
+    expect(r.dignity.isDebilitatedSign).toBe(false);
+    expect(r.dignity.isExactDebilitationPoint).toBe(false);
+  });
+
+  it("Part B: representative overlap cases across all 7 classical Grahas match the corrected, documented precedence", () => {
+    const cases = [
+      { planet: "moon", rashiKey: "taurus", deg: 3, expectedStatus: "exact_exaltation_point", mustContain: ["exact_exaltation_point", "moolatrikona", "exaltation"] },
+      { planet: "moon", rashiKey: "taurus", deg: 10, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "exaltation"] },
+      { planet: "moon", rashiKey: "taurus", deg: 29, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "exaltation"] },
+      { planet: "mercury", rashiKey: "virgo", deg: 15, expectedStatus: "exact_exaltation_point", mustContain: ["exact_exaltation_point", "moolatrikona", "exaltation", "own_sign"] },
+      { planet: "mercury", rashiKey: "virgo", deg: 17, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "exaltation", "own_sign"] },
+      { planet: "mercury", rashiKey: "virgo", deg: 25, expectedStatus: "exaltation", mustContain: ["exaltation", "own_sign"] },
+      { planet: "sun", rashiKey: "leo", deg: 10, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "own_sign"] },
+      { planet: "mars", rashiKey: "aries", deg: 6, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "own_sign"] },
+      { planet: "jupiter", rashiKey: "sagittarius", deg: 5, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "own_sign"] },
+      { planet: "venus", rashiKey: "libra", deg: 8, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "own_sign"] },
+      { planet: "saturn", rashiKey: "aquarius", deg: 12, expectedStatus: "moolatrikona", mustContain: ["moolatrikona", "own_sign"] },
+    ];
+    for (const { planet, rashiKey, deg, expectedStatus, mustContain } of cases) {
+      const rashiIndex = RASHIS.find((r) => r.key === rashiKey).index;
+      const r = buildVedicCondition({ grahas: fakeGrahas({ [planet]: fakeGraha(rashiIndex, deg) }) }).planets[planet];
+      expect(r.dignity.rashiDignityStatus).toBe(expectedStatus);
+      for (const label of mustContain) {
+        expect(r.dignity.dignityLabels).toContain(label);
+      }
+    }
+  });
+
+  it("Part D/F: dignityLabels never loses a simultaneously-true fact - every true boolean has a corresponding label, and vice versa", () => {
+    const virgoIndex = RASHIS.find((r) => r.key === "virgo").index;
+    const r = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 17) }) }).planets.mercury;
+    const d = r.dignity;
+    expect(d.dignityLabels.includes("moolatrikona")).toBe(d.isMoolatrikona);
+    expect(d.dignityLabels.includes("exaltation")).toBe(d.isExaltedSign);
+    expect(d.dignityLabels.includes("own_sign")).toBe(d.isOwnSign);
+    expect(d.dignityLabels.includes("debilitation")).toBe(d.isDebilitatedSign);
+    expect(d.dignityLabels.includes("exact_exaltation_point")).toBe(d.isExactExaltationPoint);
+    expect(d.dignityLabels.includes("exact_debilitation_point")).toBe(d.isExactDebilitationPoint);
+    // rashiDignityStatus is always exactly the first (most specific) label - never a fact invented separately from the label set.
+    expect(d.rashiDignityStatus).toBe(d.dignityLabels[0]);
+  });
+
+  it("a debilitated placement whose sign-lord happens to be a natural friend shows BOTH facts, never hiding the debilitation", () => {
+    // Mars debilitated in Cancer (lord Moon, Mars's natural friend) - the
+    // locked verification chart's own Mars is exactly this case.
+    const r = chart().vedic.condition.planets.mars;
+    expect(r.dignity.isDebilitatedSign).toBe(true);
+    expect(r.dignity.rashiDignityStatus).toBe("debilitation");
+    expect(r.dignity.dignityLabels).toContain("debilitation");
+    expect(r.dignity.dignityLabels).toContain("friend_sign");
+  });
+
+  it("chart.vedic.meta.dignityDisplayPolicy names the audited display policy, in both top-level meta and condition.meta", () => {
+    const chartResult = chart();
+    expect(chartResult.vedic.meta.dignityDisplayPolicy).toBe("most_specific_dignity_label_primary_with_full_dignity_labels_array");
+    expect(chartResult.vedic.condition.meta.dignityDisplayPolicy).toBe("most_specific_dignity_label_primary_with_full_dignity_labels_array");
+  });
+
+  it("the verification chart's rashiDignityStatus values are byte-for-byte unchanged by this precedence audit (none of the 7 classical Grahas sits in its own exaltation sign in this chart)", () => {
+    const { condition } = chart().vedic;
+    expect(condition.planets.sun.dignity.rashiDignityStatus).toBe("friend_sign");
+    expect(condition.planets.moon.dignity.rashiDignityStatus).toBe("friend_sign");
+    expect(condition.planets.mars.dignity.rashiDignityStatus).toBe("debilitation");
+    expect(condition.planets.mercury.dignity.rashiDignityStatus).toBe("friend_sign");
+    expect(condition.planets.jupiter.dignity.rashiDignityStatus).toBe("friend_sign");
+    expect(condition.planets.venus.dignity.rashiDignityStatus).toBe("moolatrikona");
+    expect(condition.planets.saturn.dignity.rashiDignityStatus).toBe("moolatrikona");
   });
 });
