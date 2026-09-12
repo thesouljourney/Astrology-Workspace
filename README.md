@@ -2316,6 +2316,237 @@ every `rashiDignityStatus` value is byte-for-byte unchanged — confirmed
 by dedicated test. Six new tests were added. All 533 tests pass (527
 prior + 6 new). Phase 4D can now be safely locked.
 
+## 23. Phase 4E: Vedic Dispositor, Lordship & Functional Structure
+
+**Scope**: this phase builds the structural lordship/dispositor layer on
+top of the already-locked Phase 4B (Bhava/house ownership) and Phase 4D
+(dignity/condition) data: the immediate Rashi dispositor of every Graha,
+full dispositor chains with explicit loop detection, a normalized Lagna
+Lord network, the standard Kendra/Trikona/Dusthana/Upachaya house-group
+memberships, per-planet structural house-ownership roles (including the
+neutral `ownsKendraAndTrikona` evidence flag), a 12-house lord placement
+matrix, and a per-planet technical evidence rollup. It performs **no new
+astronomical calculation** and builds **no new house or dignity table** —
+every fact it reports is either a direct reuse of Phase 4B's
+`lordshipNetwork`/`planetaryHouseOwnership` or Phase 4D's
+dignity/retrograde/combustion evidence, or a genuinely new computation
+(dispositor chains, loop detection, house-group membership) built
+strictly on top of those locked facts.
+
+**Deliberately NOT implemented** (see "Functional-label research" below):
+functional benefic/malefic, Yogakaraka, Maraka, Badhaka, and any
+lordship/dispositor score or interpretation.
+
+**Architecture**: `chart.vedic.lordship` (`src/astrology/vedic/lordship.js`)
+takes the already-built `grahas` (Phase 4A), `bhava` (Phase 4B), and
+`condition` (Phase 4D) objects as input and never mutates any of them.
+
+**Immediate dispositor** (Parts A/B): the dispositor of a Graha is the
+traditional Rashi lord (`rashiLordship.js`'s `RASHI_LORDS` — the exact
+same table Phase 4B already uses) of the Rashi it currently occupies. A
+Graha in its own sign is its own dispositor (`isSelfDispositor: true`).
+Rahu/Ketu receive an ordinary dispositor lookup through the same table
+and function as the seven classical Grahas (e.g. Rahu in Libra →
+dispositor Venus), but since `RASHI_LORDS` never resolves to `"rahu"` or
+`"ketu"`, neither node can ever itself *be* a dispositor of anything, and
+neither can ever be a self-dispositor — confirmed by dedicated test.
+
+**Dispositor chains & loop detection** (Parts C/D/E): for each of the
+seven classical Grahas, a chain is built by repeatedly following "who
+disposits whom" until either a self-dispositor terminates the chain
+(`finalDispositor` is set) or a Graha already seen earlier in the same
+chain reappears (a **loop** — `finalDispositor` is `null` and the looping
+members are exposed explicitly, per the brief's explicit rule never to
+force one loop member to stand in as "the" final dispositor). Because
+there are only seven classical Grahas and each has exactly one outgoing
+"disposits to" edge (a finite functional graph), every chain is
+mathematically **guaranteed** to terminate one way or the other within at
+most 8 steps — a `CHAIN_SAFETY_LIMIT` of 20 exists purely as defensive
+engineering against a hypothetical future bug and is never itself
+astrological doctrine. Loops are **canonicalized** (Part E) by sorting
+the looping Grahas' display names alphabetically, so "Mars → Sun → Mars"
+and "Sun → Mars → Sun" both produce the identical
+`{ type: "loop", members: ["Mars", "Sun"] }` object; the chart-level
+`loops` array lists each distinct loop exactly once even when multiple
+starting Grahas reach it.
+
+**Lagna Lord network** (Part F): `lagnaLordNetwork` normalizes the Lagna
+Rashi, its lord, that lord's current Rashi/Bhava, its own dispositor, its
+full dispositor chain, and its final dispositor or loop — one flat,
+uninterpreted object.
+
+**House groups** (Part G) — standard, uncontested Parashari definitions,
+membership only, no good/bad inference:
+
+| Group | Houses |
+|---|---|
+| Kendra | 1, 4, 7, 10 |
+| Trikona | 1, 5, 9 |
+| Dusthana | 6, 8, 12 |
+| Upachaya | 3, 6, 10, 11 |
+
+**Planetary house-ownership roles** (Parts H/I): for each classical
+Graha, `planetaryLordshipRoles` reuses Phase 4B's own
+`planetaryHouseOwnership` verbatim (never recomputed) and derives which
+owned houses fall in each group, plus `ownsKendraAndTrikona` — exposed
+strictly as neutral structural evidence, **never** auto-labeled
+Yogakaraka (Part I's explicit instruction).
+
+**12-house lord matrix** (Part J): `houseLordMatrix` normalizes Phase
+4B's own `lordshipNetwork` into 12 rows, each carrying that Bhava's lord,
+the lord's current Rashi/Bhava, and — reused verbatim from Phase 4D — the
+lord's dignity status, retrograde state, and combustion state.
+
+**Per-planet evidence rollup** (Part K): `planetaryLordshipEvidence`
+combines each classical Graha's owned houses, Rashi/Bhava placement,
+dignity labels, retrograde/combustion state, and dispositor/chain/final-
+dispositor/loop into one object — references to data computed above and
+in Phase 4D, never a new computation, and never narrative text.
+
+**Functional-label research** (Parts L/M/N/O) — researched and
+deliberately deferred, not silently skipped:
+
+- **Functional benefic/malefic**: genuinely Lagna-dependent (a separate
+  7-planet table per each of the 12 possible Ascendants) and entangled
+  with the disputed Kendradhipati Dosha exception, whose exact
+  cancellation conditions are not stated uniformly across sources.
+- **Yogakaraka**: Lagna-dependent by definition (only six of the twelve
+  possible Ascendants can even produce one) with known special-case
+  disagreement over edge conditions and prioritization among candidates.
+- **Maraka**: traditional doctrine is inseparable from Dasha/Antardasha
+  timing, and this project has no Dasha implementation at all (Phase
+  4C's own locked scope boundary) — representing Maraka as static natal
+  structure would require inventing an unresearched simplification.
+- **Badhaka**: requires classifying the Lagna's sign as movable/fixed/
+  dual, a classification this project has not built in any phase to
+  date.
+
+**Result**: all four remain `"not_implemented"` in `chart.vedic.meta`,
+matching the brief's own preferred defaults — a researched, documented
+deferral rather than a silent omission. The neutral structural evidence
+these doctrines would eventually build on (`ownsKendra`, `ownsTrikona`,
+`ownsKendraAndTrikona`, house-lord placement, dignity, retrograde,
+combustion) is already fully exposed, so a future phase can implement any
+of the four without revisiting this one.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus) — Lagna Leo, Lagna Lord Sun:
+
+Rashi dispositors (all nine Grahas):
+
+| Graha | Rashi | Dispositor | Self-Dispositor |
+|---|---|---|---|
+| Sun | Scorpio | Mars | No |
+| Moon | Gemini | Mercury | No |
+| Mars | Cancer | Moon | No |
+| Mercury | Libra | Venus | No |
+| Jupiter | Scorpio | Mars | No |
+| Venus | Libra | Venus | Yes |
+| Saturn | Aquarius | Saturn | Yes |
+| Rahu | Libra | Venus | No (node — never self) |
+| Ketu | Aries | Mars | No (node — never self) |
+
+Dispositor chains (seven classical Grahas) — **no loops present** in this
+chart:
+
+| Graha | Chain | Final Dispositor |
+|---|---|---|
+| Sun | Sun → Mars → Moon → Mercury → Venus | Venus |
+| Moon | Moon → Mercury → Venus | Venus |
+| Mars | Mars → Moon → Mercury → Venus | Venus |
+| Mercury | Mercury → Venus | Venus |
+| Jupiter | Jupiter → Mars → Moon → Mercury → Venus | Venus |
+| Venus | Venus | Venus (self) |
+| Saturn | Saturn | Saturn (self) |
+
+`loops: []` — the two self-dispositors (Venus, Saturn) are the only
+terminal points; every other classical Graha's chain funnels into Venus.
+
+Lagna Lord network: Lagna Rashi Leo → Lagna Lord Sun (Scorpio, Bhava 4) →
+dispositor Mars → chain Sun → Mars → Moon → Mercury → Venus → final
+dispositor **Venus**.
+
+Planetary house-ownership roles:
+
+| Graha | Owned Houses | Kendra | Trikona | Dusthana | Upachaya | Kendra+Trikona |
+|---|---|---|---|---|---|---|
+| Sun | 1 | 1 | 1 | — | — | **Yes** |
+| Moon | 12 | — | — | 12 | — | No |
+| Mars | 4, 9 | 4 | 9 | — | — | **Yes** |
+| Mercury | 2, 11 | — | — | — | 11 | No |
+| Jupiter | 5, 8 | — | 5 | 8 | — | No |
+| Venus | 3, 10 | 10 | — | — | 3, 10 | No |
+| Saturn | 6, 7 | 7 | — | 6 | 6 | No |
+
+Only Sun and Mars show `ownsKendraAndTrikona: true` for this chart —
+reported as neutral structural evidence only, per Part I never
+interpreted as Yogakaraka.
+
+12-house lord matrix:
+
+| Bhava | Rashi | Lord | Lord's Rashi | Lord's Bhava | Dignity | Retrograde | Combust |
+|---|---|---|---|---|---|---|---|
+| 1 | Leo | Sun | Scorpio | 4 | Friend's Sign | No | No |
+| 2 | Virgo | Mercury | Libra | 3 | Friend's Sign | No | Yes |
+| 3 | Libra | Venus | Libra | 3 | Moolatrikona | Yes | No |
+| 4 | Scorpio | Mars | Cancer | 12 | Debilitation | No | No |
+| 5 | Sagittarius | Jupiter | Scorpio | 4 | Friend's Sign | No | Yes |
+| 6 | Capricorn | Saturn | Aquarius | 7 | Moolatrikona | No | No |
+| 7 | Aquarius | Saturn | Aquarius | 7 | Moolatrikona | No | No |
+| 8 | Pisces | Jupiter | Scorpio | 4 | Friend's Sign | No | Yes |
+| 9 | Aries | Mars | Cancer | 12 | Debilitation | No | No |
+| 10 | Taurus | Venus | Libra | 3 | Moolatrikona | Yes | No |
+| 11 | Gemini | Mercury | Libra | 3 | Friend's Sign | No | Yes |
+| 12 | Cancer | Moon | Gemini | 11 | Friend's Sign | No | No |
+
+**Independent verification**: every immediate dispositor, chain, final
+dispositor, house-ownership role, and matrix row above was hand-traced
+against Phase 4B's own `lordshipNetwork`/`planetaryHouseOwnership` and
+Phase 4D's own dignity/retrograde/combustion fields before being accepted
+— confirmed to match exactly. 42 dedicated tests independently re-derive
+immediate dispositors for all nine Grahas, walk every classical Graha's
+chain by hand, and exercise five synthetic scenarios built by calling the
+real `buildVedicBhava`/`buildVedicCondition`/`buildVedicLordship`
+functions on hand-placed Rashi positions: a self-dispositor chain, a
+two-planet loop, a three-planet loop, a long chain terminating in a
+self-dispositor, and a long chain feeding into an existing loop (with
+chart-level deduplication confirmed).
+
+**Regression**: Phase 4A's `grahas`/`lagna`/`ayanamsha`, Phase 4B's
+`bhava`, Phase 4C's `nakshatra`, Phase 4D's `condition`, and Modern
+Western/Classical/Phase 3H outputs are confirmed byte-for-byte unchanged
+by dedicated tests.
+
+**UI**: a new "Dispositor & Lordship Structure｜守护星与宫主结构"
+subsection was added inside the existing Vedic Astrology｜印度占星 section
+— a Lagna Lord Network table, a Rashi Dispositors table (all nine Grahas,
+including Rahu/Ketu with an empty chain/final-dispositor cell), a House
+Group Ownership table, and the 12-House Lord Matrix table — technical and
+compact, no interpretation. Verified in-browser at desktop (1100px) and
+mobile (390px) width: no console errors, no horizontal page overflow.
+
+New `chart.vedic.meta` fields: `dispositorSystem:
+"traditional_rashi_lordship"`, `dispositorFinalRule:
+"self_dispositor_terminal_only"`, `dispositorLoopPolicy:
+"canonical_cycle_no_forced_final_dispositor"`, `houseGroupConvention:
+"standard_kendra_trikona_dusthana_upachaya"`, `functionalBenefic:
+"not_implemented"`, `functionalMalefic: "not_implemented"`, `yogakaraka:
+"not_implemented"`, `maraka: "not_implemented"`, `badhaka:
+"not_implemented"`, `vedicLordshipInterpretation: "none"`.
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (Playwright was again a temporary devDependency for
+the in-browser UI check only, fully uninstalled afterward). All 575
+tests pass (533 carried over from Phase 1–4D unchanged, plus 42 new
+Phase 4E tests).
+
+No convention disagreement was found for the house-group definitions
+themselves (Kendra/Trikona/Dusthana/Upachaya are uncontested across every
+source checked) — the only genuinely disputed doctrines encountered
+(functional benefic/malefic, Yogakaraka, Maraka, Badhaka) were resolved
+by deferral rather than a silent pick, per the phase brief's own STOP
+conditions.
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

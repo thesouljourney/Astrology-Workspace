@@ -95,6 +95,19 @@ import {
   COMBUSTION_CONVENTION,
   RAHU_KETU_DIGNITY_STATUS,
 } from "./dignityTables.js";
+import {
+  buildVedicLordship,
+  DISPOSITOR_SYSTEM,
+  DISPOSITOR_FINAL_RULE,
+  DISPOSITOR_LOOP_POLICY,
+  HOUSE_GROUP_CONVENTION,
+  FUNCTIONAL_BENEFIC_STATUS,
+  FUNCTIONAL_MALEFIC_STATUS,
+  YOGAKARAKA_STATUS,
+  MARAKA_STATUS,
+  BADHAKA_STATUS,
+  VEDIC_LORDSHIP_INTERPRETATION,
+} from "./lordship.js";
 
 export { NAVAGRAHA_ORDER };
 
@@ -282,6 +295,12 @@ export function buildVedicChart({ chart, astroTime }) {
   // astronomical calculation, no mutation of `grahas`.
   const condition = buildVedicCondition({ grahas });
 
+  // Phase 4E: dispositor/lordship structural layer, reusing Phase 4B's
+  // own house-ownership/lordship-network structures and Phase 4D's own
+  // dignity/retrograde/combustion evidence verbatim - no new house or
+  // dignity computation, no mutation of `bhava`/`condition`.
+  const lordship = buildVedicLordship({ grahas, bhava, condition });
+
   const meta = {
     vedicSystem: "jyotish",
     zodiacType: "sidereal",
@@ -318,7 +337,17 @@ export function buildVedicChart({ chart, astroTime }) {
     compoundFriendship: COMPOUND_FRIENDSHIP_STATUS,
     shadbala: SHADBALA_STATUS,
     vedicConditionInterpretation: VEDIC_CONDITION_INTERPRETATION,
+    dispositorSystem: DISPOSITOR_SYSTEM,
+    dispositorFinalRule: DISPOSITOR_FINAL_RULE,
+    dispositorLoopPolicy: DISPOSITOR_LOOP_POLICY,
+    houseGroupConvention: HOUSE_GROUP_CONVENTION,
+    functionalBenefic: FUNCTIONAL_BENEFIC_STATUS,
+    functionalMalefic: FUNCTIONAL_MALEFIC_STATUS,
+    yogakaraka: YOGAKARAKA_STATUS,
+    maraka: MARAKA_STATUS,
+    badhaka: BADHAKA_STATUS,
+    vedicLordshipInterpretation: VEDIC_LORDSHIP_INTERPRETATION,
   };
 
-  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition };
+  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship };
 }

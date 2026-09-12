@@ -79,7 +79,7 @@ export default function VedicAstrology({ chart }) {
   const { vedic } = chart;
   if (!vedic) return null;
 
-  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition } = vedic;
+  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship } = vedic;
   const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
   const classicalGrahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"];
 
@@ -214,6 +214,46 @@ export default function VedicAstrology({ chart }) {
           <tr>
             <td>Condition Interpretation｜状态解读</td>
             <td>{meta.vedicConditionInterpretation}</td>
+          </tr>
+          <tr>
+            <td>Dispositor System｜守护星系统</td>
+            <td className="meta-cell">{meta.dispositorSystem}</td>
+          </tr>
+          <tr>
+            <td>Dispositor Final Rule｜最终守护星规则</td>
+            <td className="meta-cell">{meta.dispositorFinalRule}</td>
+          </tr>
+          <tr>
+            <td>Dispositor Loop Policy｜守护星循环规则</td>
+            <td className="meta-cell">{meta.dispositorLoopPolicy}</td>
+          </tr>
+          <tr>
+            <td>House Group Convention｜宫位分组依据</td>
+            <td className="meta-cell">{meta.houseGroupConvention}</td>
+          </tr>
+          <tr>
+            <td>Functional Benefic｜功能性吉星</td>
+            <td>{meta.functionalBenefic}</td>
+          </tr>
+          <tr>
+            <td>Functional Malefic｜功能性凶星</td>
+            <td>{meta.functionalMalefic}</td>
+          </tr>
+          <tr>
+            <td>Yogakaraka｜瑜伽卡拉卡</td>
+            <td>{meta.yogakaraka}</td>
+          </tr>
+          <tr>
+            <td>Maraka｜生死主</td>
+            <td>{meta.maraka}</td>
+          </tr>
+          <tr>
+            <td>Badhaka｜阻碍主</td>
+            <td>{meta.badhaka}</td>
+          </tr>
+          <tr>
+            <td>Lordship Interpretation｜宫主结构解读</td>
+            <td>{meta.vedicLordshipInterpretation}</td>
           </tr>
         </tbody>
       </table>
@@ -424,6 +464,174 @@ export default function VedicAstrology({ chart }) {
               </tr>
             );
           })}
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Dispositor & Lordship Structure｜守护星与宫主结构</h3>
+      <p className="reception-note">
+        Rashi dispositors, dispositor chains/loops, Lagna Lord network, house-group membership, and the 12-house lord
+        matrix — structural evidence only, reusing Phase 4B house ownership and Phase 4D dignity/condition. No
+        functional benefic/malefic, Yogakaraka, Maraka, Badhaka, or scoring｜仅为守护星（宫主）结构证据 — 复用第4B阶段宫位归属与第4D阶段尊贵/状态数据。尚未涉及功能性吉凶、瑜伽卡拉卡、生死主、阻碍主或评分
+      </p>
+
+      <h4>Lagna Lord Network｜上升主星关系网</h4>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Lagna Rashi｜上升星座</td>
+            <td>{RASHI_LABEL[lordship.lagnaLordNetwork.lagnaRashi] ?? lordship.lagnaLordNetwork.lagnaRashi}</td>
+          </tr>
+          <tr>
+            <td>Lagna Lord｜上升主星</td>
+            <td>{grahaDisplayLabel(lordship.lagnaLordNetwork.lagnaLord)}</td>
+          </tr>
+          <tr>
+            <td>Lagna Lord's Rashi｜上升主星所在星座</td>
+            <td>{RASHI_LABEL[lordship.lagnaLordNetwork.lagnaLordRashi] ?? lordship.lagnaLordNetwork.lagnaLordRashi}</td>
+          </tr>
+          <tr>
+            <td>Lagna Lord's Bhava｜上升主星所在宫位</td>
+            <td>{lordship.lagnaLordNetwork.lagnaLordBhava}</td>
+          </tr>
+          <tr>
+            <td>Lagna Lord's Dispositor｜上升主星之守护星</td>
+            <td>{grahaDisplayLabel(lordship.lagnaLordNetwork.lagnaLordDispositor)}</td>
+          </tr>
+          <tr>
+            <td>Dispositor Chain｜守护星链</td>
+            <td>{lordship.lagnaLordNetwork.dispositorChain.map((n) => grahaDisplayLabel(n)).join(" → ")}</td>
+          </tr>
+          <tr>
+            <td>Final Dispositor｜最终守护星</td>
+            <td>
+              {lordship.lagnaLordNetwork.finalDispositor
+                ? grahaDisplayLabel(lordship.lagnaLordNetwork.finalDispositor)
+                : lordship.lagnaLordNetwork.loop
+                ? `Loop｜循环: ${lordship.lagnaLordNetwork.loop.members.map((n) => grahaDisplayLabel(n)).join(" ↔ ")}`
+                : "—"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h4>Rashi Dispositors｜星座守护星</h4>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Rashi｜星座</th>
+            <th>Dispositor｜守护星</th>
+            <th>Dispositor Chain｜守护星链</th>
+            <th>Final Dispositor / Loop｜最终守护星或循环</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grahaKeys.map((key) => {
+            const d = lordship.dispositors[key];
+            const chainInfo = lordship.dispositorChains[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{RASHI_LABEL[d.rashi] ?? d.rashi}</td>
+                <td>
+                  {grahaDisplayLabel(d.dispositor)}
+                  {d.isSelfDispositor ? " (Self｜自己)" : ""}
+                </td>
+                <td>{chainInfo ? chainInfo.chain.map((n) => grahaDisplayLabel(n)).join(" → ") : "—"}</td>
+                <td>
+                  {!chainInfo
+                    ? "—"
+                    : chainInfo.finalDispositor
+                    ? grahaDisplayLabel(chainInfo.finalDispositor)
+                    : chainInfo.loop
+                    ? `Loop｜循环: ${chainInfo.loop.members.map((n) => grahaDisplayLabel(n)).join(" ↔ ")}`
+                    : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+
+      {lordship.loops.length > 0 && (
+        <>
+          <h4>Distinct Dispositor Loops｜独立守护星循环</h4>
+          <ul>
+            {lordship.loops.map((loop, i) => (
+              <li key={i}>{loop.members.map((n) => grahaDisplayLabel(n)).join(" ↔ ")}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h4>House Group Ownership｜宫位分组归属</h4>
+      <p className="reception-note">
+        Kendra｜四正宫 {"{1,4,7,10}"}, Trikona｜三方宫 {"{1,5,9}"}, Dusthana｜凶宫 {"{6,8,12}"}, Upachaya｜渐强宫{" "}
+        {"{3,6,10,11}"} — membership only, no good/bad inference｜仅列归属，不作吉凶推断
+      </p>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Owned Houses｜所主宫位</th>
+            <th>Kendra｜四正宫</th>
+            <th>Trikona｜三方宫</th>
+            <th>Dusthana｜凶宫</th>
+            <th>Upachaya｜渐强宫</th>
+            <th>Kendra + Trikona｜四正+三方</th>
+          </tr>
+        </thead>
+        <tbody>
+          {classicalGrahaKeys.map((key) => {
+            const r = lordship.planetaryLordshipRoles[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{r.ownedHouses.length > 0 ? r.ownedHouses.join(", ") : "—"}</td>
+                <td>{r.ownsKendra ? r.ownedKendraHouses.join(", ") : "—"}</td>
+                <td>{r.ownsTrikona ? r.ownedTrikonaHouses.join(", ") : "—"}</td>
+                <td>{r.ownsDusthana ? r.ownedDusthanaHouses.join(", ") : "—"}</td>
+                <td>{r.ownsUpachaya ? r.ownedUpachayaHouses.join(", ") : "—"}</td>
+                <td>{r.ownsKendraAndTrikona ? "Yes｜是" : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+
+      <h4>12-House Lord Matrix｜十二宫宫主矩阵</h4>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Bhava｜宫位</th>
+            <th>Rashi｜星座</th>
+            <th>Lord｜宫主</th>
+            <th>Lord's Bhava｜宫主所在宫位</th>
+            <th>Dignity｜尊贵</th>
+            <th>Retrograde｜逆行</th>
+            <th>Combust｜燃烧</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lordship.houseLordMatrix.map((row) => (
+            <tr key={row.sourceBhava}>
+              <td>{row.sourceBhava}</td>
+              <td>{RASHI_LABEL[row.sourceRashi] ?? row.sourceRashi}</td>
+              <td>{grahaDisplayLabel(row.lord)}</td>
+              <td>{row.lordBhava}</td>
+              <td>{DIGNITY_STATUS_LABEL[row.lordDignityStatus] ?? row.lordDignityStatus}</td>
+              <td>{row.lordIsRetrograde ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+              <td>{row.lordIsCombust ? "Combust｜燃烧" : "—"}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
       </div>
