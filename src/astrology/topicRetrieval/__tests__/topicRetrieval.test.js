@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { calculateChart } from "../../ephemeris.js";
 import { resolveEvidencePath } from "../../crossSystem.js";
 import { TOPIC_RECIPES } from "../recipes.js";
+import { classicalHouseLordKey } from "../helpers.js";
 
 const VERIFICATION_INPUT = {
   birthDate: "1994-11-21",
@@ -208,6 +209,50 @@ describe("TEST 9: Classical ordinary natal aspect evidence can still be retrieve
     const self = c.topicRetrieval.topics.find((t) => t.id === "self_core_nature");
     const lord1 = self.systems.classical.primary.find((i) => i.evidenceId === "classical_lord1");
     expect(Array.isArray(lord1.value.evidence.aspects)).toBe(true);
+  });
+});
+
+// ============================================================
+// Pre-lock audit follow-up: house-lord derivation must come from
+// each house's OWN cusp sign, never from the Ascendant sign generally
+// (H1's cusp sign happens to equal the Ascendant sign by definition,
+// but H2-H12 do not - this guards against a lord-derivation bug that
+// would silently derive every house's lord from H1/ASC instead of its
+// own cusp).
+// ============================================================
+
+describe("Pre-lock audit: classical house-lord derivation uses each house's own cusp sign", () => {
+  it("classicalHouseLordKey(h) matches the traditional domicile ruler of house h's own cusp sign, for all 12 houses on the verification chart", () => {
+    const c = chart();
+    const expected = {
+      1: "mercury", // virgo
+      2: "venus", // libra
+      3: "mars", // scorpio
+      4: "jupiter", // sagittarius
+      5: "saturn", // capricorn
+      6: "saturn", // aquarius
+      7: "jupiter", // pisces
+      8: "mars", // aries
+      9: "venus", // taurus
+      10: "mercury", // gemini
+      11: "moon", // cancer
+      12: "sun", // leo
+    };
+    for (let house = 1; house <= 12; house++) {
+      const cusp = c.houseCusps.find((cusp) => cusp.house === house);
+      const lordKey = classicalHouseLordKey(c, house);
+      expect(lordKey, `H${house} (${cusp.sign.key}) lord`).toBe(expected[house]);
+    }
+  });
+
+  it("H10's lord is derived from H10's own cusp sign (Gemini), not from the Ascendant sign (Virgo) - they are independent facts that happen to both point to Mercury on this chart", () => {
+    const c = chart();
+    const h10Cusp = c.houseCusps.find((cusp) => cusp.house === 10);
+    const h1Cusp = c.houseCusps.find((cusp) => cusp.house === 1);
+    expect(h10Cusp.sign.key).toBe("gemini");
+    expect(h1Cusp.sign.key).toBe("virgo");
+    expect(h10Cusp.sign.key).not.toBe(h1Cusp.sign.key);
+    expect(classicalHouseLordKey(c, 10)).toBe("mercury");
   });
 });
 
