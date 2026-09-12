@@ -8,6 +8,7 @@ import ClassicalAstrology from "./components/ClassicalAstrology.jsx";
 import VedicAstrology from "./components/VedicAstrology.jsx";
 import CrossSystemEvidence from "./components/CrossSystemEvidence.jsx";
 import TopicRetrieval from "./components/TopicRetrieval.jsx";
+import CaseWorkspace from "./components/caseWorkspace/CaseWorkspace.jsx";
 import "./App.css";
 
 const DEFAULT_INPUT = {
@@ -25,6 +26,7 @@ function App() {
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [chart, setChart] = useState(null);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("calculator");
 
   const handleChange = (field) => (e) => {
     setInput((prev) => ({ ...prev, [field]: e.target.value }));
@@ -48,6 +50,19 @@ function App() {
         <p className="subtitle">Calculation Prototype｜计算原型</p>
       </header>
 
+      <nav className="app-tab-nav">
+        <button type="button" className={activeTab === "calculator" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("calculator")}>
+          Calculator｜计算器
+        </button>
+        <button type="button" className={activeTab === "cases" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("cases")}>
+          Cases｜案例
+        </button>
+      </nav>
+
+      {activeTab === "cases" && <CaseWorkspace />}
+
+      {activeTab === "calculator" && (
+        <>
       <section className="form">
         <div className="field">
           <label htmlFor="birthDate">Birth Date｜出生日期</label>
@@ -238,6 +253,8 @@ function App() {
           <CrossSystemEvidence chart={chart} />
           <TopicRetrieval chart={chart} />
         </section>
+      )}
+        </>
       )}
     </div>
   );

@@ -3312,6 +3312,184 @@ The Classical maternal natural significator remains intentionally
 
 ---
 
+## 27. Phase 7: Manual Interpretation Workspace & Case Notes — IMPLEMENTED, PENDING AUDIT/LOCK
+
+**Purpose**: Phase 7 is NOT a calculation phase and NOT an interpretation
+phase. It is a Case-management and note-taking layer on top of the
+already-locked Phase 6 Topic Retrieval Framework:
+
+```
+Phase 6 Topic Retrieval -> Phase 7 Evidence Organization -> Human-written
+System Notes -> Human-written Cross-System Observations -> Human-written
+Final Interpretation
+```
+
+The software organizes evidence; the human interprets it. No AI
+interpretation, no scoring, no synthesis is introduced anywhere in this
+phase - `src/caseWorkspace/evidenceGrouping.js`'s own doc comment states
+explicitly that its regrouping is presentation-only and introduces no
+new astrology semantics.
+
+**Architecture**: `src/caseWorkspace/` holds every framework-agnostic
+piece (pure functions and repositories, unit-testable without React);
+`src/components/caseWorkspace/` holds the UI that consumes them.
+
+```
+src/caseWorkspace/
+  fingerprint.js            deriveCalculationProfile(), computeChartFingerprint()
+  caseModel.js               createCaseRecord() factory
+  noteModel.js                createNoteVersion() factory, PHASE6_TOPIC_IDS
+  caseChart.js                Case -> calculateChart() bridge (the ONLY astrology entry point)
+  evidenceGrouping.js         Phase 6 evidence -> Phase 7 workflow-group classification (presentation only)
+  autosaveController.js       framework-agnostic debounced autosave
+  storage/
+    memoryStorage.js          in-memory Storage-compatible adapter + localStorage-or-memory picker
+    storageKeys.js            namespaced/versioned key builders
+    jsonStore.js               safe read/write helpers (malformed data never throws)
+    localCaseRepository.js     caseRepository implementation
+    localNotesRepository.js    notesRepository implementation
+src/components/caseWorkspace/
+  CaseWorkspace.jsx           top-level container, owns the repository instances
+  CaseManager.jsx             case list + create/rename/archive/switch (brief Part 23)
+  CaseOverview.jsx            birth-data summary + 8-topic progress grid
+  TopicWorkspace.jsx          generic per-(Case,Topic) workspace - no second topic-recipe engine
+  SystemEvidencePanel.jsx     one system's Phase 6 evidence regrouped into workflow sections
+  NotesAndJudgmentSection.jsx System Notes / Cross-System Observation / Final Judgment + versioning UI
+  useAutosave.js               React wrapper around autosaveController.js
+  caseWorkspace.css            Phase 7's own stylesheet (same tokens as App.css)
+```
+
+Wired into the app via a simple `Calculator｜计算器` / `Cases｜案例` tab
+switcher in `App.jsx` - the existing single-chart calculator (Phases
+1-6) is completely unchanged and unaffected; Phase 7 lives in its own
+tab.
+
+**Case model** (`caseModel.js`): `{ caseId (stable UUID, never derived
+from caseName), caseName, birthData: {date, time, placeName, latitude,
+longitude, timezone}, calculationProfile, chartFingerprint, status
+("active"|"archived"), createdAt, updatedAt }`. `calculationProfile` is
+never invented - it is read verbatim off an already-computed chart via
+`deriveCalculationProfile(chart)`: `westernZodiac`/`westernHouseSystem`/
+`westernNodeType`/`westernLilithType` from `chart.meta`;
+`classicalRulershipSystem`/`classicalTriplicitySystem`/
+`classicalTermSystem`/`classicalFaceSystem` from `chart.classical.meta`
+(locked since Phase 3A); `vedicAyanamsha`/`vedicBhavaSystem`/
+`vedicNodeType` from `chart.vedic.meta` (locked since Phase 4A/4B). This
+is the one narrow, disclosed exception to "Phase 7 reads only
+`chart.topicRetrieval`" (see "Source-of-truth" below) - Phase 6 does not
+carry global calculation-convention metadata, so there is nothing there
+to read instead, and no evidence is fetched this way, only convention
+labels used for fingerprinting.
+
+**Topic Note model** (`noteModel.js`): `{ noteId, caseId, topicId
+(one of the 8 locked Phase 6 topic IDs), chartFingerprint, westernNotes,
+classicalNotes, vedicNotes, convergenceNotes, differencesNotes,
+uncertainNotes, finalInterpretation, evidenceReliedOn: [] (a subset of
+domain_architecture/core_rulers/technical_condition/domain_occupants/
+structural_connections/supporting_evidence/other - user annotation,
+never a score), versionNumber, status ("draft"|"final"|"archived"),
+createdAt, updatedAt }`. Every field starts blank; nothing is ever
+pre-filled with generated interpretation.
+
+**Chart fingerprint policy** (`fingerprint.js`): a deterministic,
+non-cryptographic hash (`cyrb53`, fixed seed, public-domain) of a
+canonical (recursively key-sorted) JSON serialization of exactly:
+birth date, birth time, latitude, longitude, timezone, plus every
+`deriveCalculationProfile()` field above. `crypto.subtle.digest` was
+deliberately NOT used - it is Promise-based, and this fingerprint must
+be computable synchronously in both the browser and a plain Node/vitest
+environment with zero new dependency; this is a change-detection
+fingerprint, not a security boundary, so a non-cryptographic hash is an
+appropriate and disclosed choice. Explicitly EXCLUDED from the
+fingerprint: `caseName`, all note content, timestamps, and UI state -
+confirmed by dedicated test.
+
+**Note versioning & Final-editing policy**: versions are numbered
+per-`chartFingerprint` starting at 1. Autosave (`saveDraft`) updates the
+current Draft version in place and never creates a new version.
+"Create New Version" is the only explicit action that adds one. Chosen
+policy: **a Final version is read-only by default; to continue changing
+interpretation, the user must create a new Draft version.** This is
+enforced at the repository layer (`saveDraft()` throws if the target
+version is not `"draft"`), not merely hidden in the UI, so no caller can
+bypass it. A version can additionally be Archived (from Draft or Final)
+without losing its content - `listVersions()`/`getCurrentVersion()`
+still return it.
+
+**Chart-change behavior**: if a Case's live-recomputed `chartFingerprint`
+no longer matches any fingerprint a Topic's notes were written under,
+the UI shows "This interpretation was written for an earlier chart
+version" and offers "Start New Note Version" (creates a fresh version
+under the new fingerprint) alongside a read-only "View Previous Notes"
+picker over every historical fingerprint that has notes. Nothing is ever
+deleted, silently migrated to the new fingerprint, or copied forward as
+if still valid - old notes remain exactly as written, under their own
+fingerprint, forever.
+
+**Storage abstraction**: UI/service code never touches `localStorage`
+directly - every read/write goes through `caseRepository`/
+`notesRepository` (`create/get/list/update/rename/archive/unarchive` and
+`getWorkspace/listFingerprints/listVersions/getCurrentVersion/
+createVersion/saveDraft/markFinal/archiveVersion` respectively). The
+current implementation (`localCaseRepository.js`/
+`localNotesRepository.js`) is backed by `getDefaultStorage()`
+(`window.localStorage` when available and writable, else an in-memory
+fallback so a locked-down browser, SSR, or a plain Node/vitest
+environment never crashes). Storage keys are namespaced and versioned
+(`astro_workspace.v1.cases`, `astro_workspace.v1.case.<caseId>`,
+`astro_workspace.v1.notes.<caseId>.<topicId>`) via one shared
+`storageKeys.js`, so the on-disk shape is documented in exactly one
+place. Malformed or missing stored JSON never throws - `readJson()`
+resolves to a safe fallback in every case, confirmed by dedicated test.
+
+**Future Supabase compatibility** (NOT implemented in this phase - no
+package installed, no credentials, no environment variables, no network
+call, no auth): the repository interfaces are designed so a
+`SupabaseCaseRepository`/`SupabaseNotesRepository` could implement the
+exact same async-friendly method names against remote tables without
+the UI changing at all. Conceptual future mapping: a `cases` table
+mirroring the Case record one row per Case, and a `note_versions` table
+mirroring one row per Topic Note version (keyed by
+`caseId`/`topicId`/`chartFingerprint`/`versionNumber`, mirroring the
+local `byFingerprint -> versions[]` grouping). This mapping is
+documentation only - implementing it is explicitly future work.
+
+**Autosave policy**: `autosaveController.js` debounces ~1.5s after the
+last edit (never one save per keystroke), reports
+`idle/unsaved/saving/saved/error` status to the UI, and exposes
+`flush()` (cancel the pending timer and save immediately) which
+`useAutosave.js` calls automatically whenever the target Case/Topic/
+chart-fingerprint/note-version identity changes or the component
+unmounts - so a stale delayed write can never land after the context
+has moved on, and an in-progress edit is never silently dropped. A
+sequence-number guard ensures a slow, now-superseded save's eventual
+result can never overwrite the status set by a newer save ("latest edit
+wins") - this also makes the same controller safe to reuse unmodified
+against a future async/network-backed repository.
+
+**Relationship to Phase 6**: Phase 7 introduces no second topic-recipe
+engine. `computeCaseChart()` calls the exact same locked
+`calculateChart()` Phases 1-6 already use, and `TopicWorkspace.jsx`
+renders exactly the `chart.topicRetrieval.topics[n]` Phase 6 already
+resolved - confirmed by dedicated test that a Case's chart and a direct
+`calculateChart()` call produce byte-identical `chart.topicRetrieval`
+output. `evidenceGrouping.js`'s regrouping (Domain Architecture / Core
+Rulers / Technical Condition / Domain Occupants / Structural
+Connections / Supporting Evidence / Missing Evidence / Convention
+Pending / Excluded) is a pure function of each item's own already-locked
+`category`/`role` fields - it never changes `availability`, `value`, or
+`sourcePath`, and never fabricates a section a topic's real evidence
+does not contain.
+
+**Unresolved / future items**: editing a Case's birth data after
+creation is not implemented (correcting a typo currently means creating
+a new Case) - not required by this phase's brief and left for future
+work; Supabase-backed repositories (see above); note search/export;
+per-Case tagging; a completion "score" was deliberately never built (out
+of scope by design, not an oversight).
+
+---
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```
