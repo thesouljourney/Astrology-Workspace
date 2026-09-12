@@ -59,8 +59,18 @@ import {
   EXTERNAL_VERIFICATION,
 } from "./ayanamsha.js";
 import { getRashi } from "./rashi.js";
+import { NAVAGRAHA_ORDER } from "./grahaNames.js";
+import {
+  buildVedicBhava,
+  VEDIC_BHAVA_SYSTEM,
+  VEDIC_BHAVA_CUSP_MODEL,
+  VEDIC_HOUSE_LORDSHIP_SYSTEM,
+  VEDIC_BHAVA_CHALIT_STATUS,
+  VEDIC_FUNCTIONAL_LORDSHIP_STATUS,
+  VEDIC_HOUSE_INTERPRETATION,
+} from "./bhava.js";
 
-export const NAVAGRAHA_ORDER = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
+export { NAVAGRAHA_ORDER };
 
 const REAL_PLANET_KEYS = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"];
 
@@ -228,6 +238,12 @@ export function buildVedicChart({ chart, astroTime }) {
     degreeFormatted: lagnaRashi.degreeFormatted,
   };
 
+  // Phase 4B: Whole-Sign Bhava structure, derived purely from the
+  // sidereal Lagna/Graha Rashis just computed above - no second sidereal
+  // engine, and the Phase 4A `lagna`/`grahas` objects above are never
+  // mutated (Bhava data lives in its own additive `chart.vedic.bhava`).
+  const bhava = buildVedicBhava({ lagna, grahas });
+
   const meta = {
     vedicSystem: "jyotish",
     zodiacType: "sidereal",
@@ -239,10 +255,15 @@ export function buildVedicChart({ chart, astroTime }) {
     vedicNodeType: VEDIC_NODE_TYPE,
     grahaSet: "navagraha",
     rashiSystem: "12_equal_30_degree_signs",
-    bhavaSystem: "not_yet_implemented",
+    bhavaSystem: VEDIC_BHAVA_SYSTEM,
+    bhavaCuspModel: VEDIC_BHAVA_CUSP_MODEL,
+    houseLordshipSystem: VEDIC_HOUSE_LORDSHIP_SYSTEM,
+    bhavaChalit: VEDIC_BHAVA_CHALIT_STATUS,
+    functionalLordship: VEDIC_FUNCTIONAL_LORDSHIP_STATUS,
     nakshatraSystem: "not_yet_implemented",
     vedicInterpretation: "none",
+    vedicHouseInterpretation: VEDIC_HOUSE_INTERPRETATION,
   };
 
-  return { meta, ayanamsha, lagna, grahas };
+  return { meta, ayanamsha, lagna, grahas, bhava };
 }

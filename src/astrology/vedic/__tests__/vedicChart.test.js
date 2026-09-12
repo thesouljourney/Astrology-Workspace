@@ -166,10 +166,16 @@ describe("TEST 13: Lagna sidereal conversion correct", () => {
   });
 });
 
-describe("TEST 14: no Vedic Bhava assignment exists yet", () => {
-  it("no house/bhava field anywhere in chart.vedic, and metadata says not_yet_implemented", () => {
+describe("TEST 14: Phase 4A lagna/grahas remain unmutated by Phase 4B's Bhava structure", () => {
+  it("Bhava data lives only in the separate, additive chart.vedic.bhava - Phase 4A's own lagna/grahas objects never gain a house/bhava field", () => {
     const chart = calculateChart(VERIFICATION_INPUT);
-    expect(chart.vedic.meta.bhavaSystem).toBe("not_yet_implemented");
+    // Phase 4B now implements Whole-Sign Bhava (see the dedicated bhava.test.js
+    // for its own full test suite) - the "not_yet_implemented" placeholder
+    // this test originally guarded is gone by design, replaced by the real
+    // value below. What this test still guards is that Phase 4A's own
+    // objects were never mutated to carry that new data.
+    expect(chart.vedic.meta.bhavaSystem).toBe("whole_sign_from_lagna");
+    expect(chart.vedic).toHaveProperty("bhava");
     expect(chart.vedic).not.toHaveProperty("bhavas");
     expect(chart.vedic.lagna).not.toHaveProperty("house");
     expect(chart.vedic.lagna).not.toHaveProperty("bhava");
@@ -178,7 +184,7 @@ describe("TEST 14: no Vedic Bhava assignment exists yet", () => {
       expect(graha).not.toHaveProperty("bhava");
     }
     const json = JSON.stringify(chart.vedic);
-    expect(json).not.toMatch(/bhavaChalit|whole_sign_bhava|sripati/i);
+    expect(json).not.toMatch(/whole_sign_bhava\b|sripati/i);
   });
 });
 
@@ -288,7 +294,7 @@ describe("TEST 24: output is JSON serializable", () => {
     const json = JSON.stringify(chart.vedic);
     expect(typeof json).toBe("string");
     const parsed = JSON.parse(json);
-    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "grahas", "lagna", "meta"].sort());
+    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "grahas", "lagna", "meta"].sort());
     expect(Object.keys(parsed.grahas).length).toBe(9);
   });
 

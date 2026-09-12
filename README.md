@@ -1692,6 +1692,153 @@ unchanged.
   Classical output remaining byte-for-byte unchanged. All 391 tests
   (385 prior + 6 new) pass.
 
+## 20. Phase 4B: Vedic Bhava & House Structure
+
+**Scope**: this phase establishes the first Vedic house architecture
+layer — Whole-Sign Bhavas numbered from the Lagna, each Navagraha's
+Bhava placement, traditional Jyotish Rashi lordship (house ownership),
+the Lagna Lord, and a technical lord-placement/lordship network. It
+deliberately does **not** implement Bhava Chalit (any degree-based house
+system), Nakshatra, dignity (own sign/exaltation/debilitation/
+moolatrikona/friend-enemy), yogas, drishti (aspects), dashas, Vargas, or
+functional benefic/malefic/yogakaraka/maraka classification — every one
+of those is marked explicitly `"not_implemented"` or `"none"` in
+`chart.vedic.meta`, never silently omitted.
+
+**Architecture — zero new sidereal engine**: `chart.vedic.bhava` is
+derived entirely from Phase 4A's own already-computed sidereal `lagna`
+and `grahas` (their Rashi/`rashiIndex` values) — no planetary or
+ayanamsha calculation happens in this phase, and Phase 4A's `lagna` and
+`grahas` objects are never mutated; all new data lives in the separate,
+additive `chart.vedic.bhava` structure (`src/astrology/vedic/bhava.js`).
+
+**Whole-Sign convention** (`whole_sign_from_lagna`): the entire Rashi
+occupied by the Lagna becomes Bhava 1 in full, regardless of the exact
+degree the Lagna falls at within it; each following Rashi (fixed
+zodiacal order) becomes the next Bhava. No house has a cusp degree in
+this phase — membership is categorical by Rashi alone
+(`bhavaCuspModel: "none_rashi_based"`). This is deliberately the oldest
+and most widespread Jyotish house convention, distinct from Bhava Chalit/
+Sripati and from every Western degree-based cusp system (Placidus,
+Koch, Campanus, Porphyry, Equal House) — none of which are used here.
+
+**Bhava numbering formula**, for a Graha in sidereal Rashi index `g` (0 =
+Aries .. 11 = Pisces) with the Lagna in Rashi index `l`:
+
+```
+bhavaNumber = ((g - l + 12) % 12) + 1
+```
+
+(the `+ 12` guards against JavaScript's `%` being a remainder operator,
+not a true modulo, since `g - l` can be negative). Verified directly:
+same Rashi as Lagna → Bhava 1; one Rashi ahead → Bhava 2; one Rashi
+behind → Bhava 12; every Pisces→Aries (index 11→0) wrap case checked
+explicitly, for all 12 possible Lagna Rashis, not just the verification
+chart's own Lagna.
+
+**Traditional Rashi lordship** (`src/astrology/vedic/rashiLordship.js`,
+`houseLordshipSystem: "traditional_jyotish_rashi_lordship"`) — the
+classical seven-planet scheme, unchanged since antiquity:
+
+| Rashi | Lord | Rashi | Lord |
+|---|---|---|---|
+| Aries | Mars | Libra | Venus |
+| Taurus | Venus | Scorpio | Mars |
+| Gemini | Mercury | Sagittarius | Jupiter |
+| Cancer | Moon | Capricorn | Saturn |
+| Leo | Sun | Aquarius | Saturn |
+| Virgo | Mercury | Pisces | Jupiter |
+
+No modern outer-planet (Uranus/Neptune/Pluto) rulership is used, exactly
+as this project's Classical (Western traditional) rulership table
+already excludes them from dignity.
+
+**Rahu/Ketu treatment**: both shadow points receive ordinary Whole-Sign
+Bhava placement from their own sidereal Rashi, exactly like any other
+Graha — but neither is ever assigned Rashi lordship or house ownership
+(the traditional rule, not a Phase 4B simplification): Rashi lordship
+for Aquarius and Scorpio remains with Saturn and Mars respectively.
+Confirmed by dedicated test: neither name ever appears in `houseLords`
+or `planetaryHouseOwnership`.
+
+**Lagna Lord**: `chart.vedic.bhava.lagna.lord`, derived directly from
+the Lagna Rashi's traditional ruler (no separate calculation).
+
+**House ownership structure** (Part H): a forward map (`houseLords`,
+Bhava number → owning graha) and a reverse map
+(`planetaryHouseOwnership`, graha key → array of Bhava numbers it owns)
+— both computed live from the verification chart, never hard-coded. Sun
+and Moon each own exactly one Bhava (their single Rashi); the other five
+classical grahas each own exactly two; the reverse map's array lengths
+sum to exactly 12 (every Bhava owned exactly once) — confirmed by test
+for all 12 possible Lagna Rashis, not only the verification chart's own.
+
+**Lord-placement network** (Parts I/J): every Bhava exposes
+`lordPlacedInBhava` (a plain integer) and a parallel
+`lordshipNetwork` array records, for every Bhava, its source Rashi, its
+lord, the lord's own Rashi, and the Bhava the lord is physically placed
+in. This is a plain technical fact only — "2nd lord in the 4th Bhava" is
+exposed as data, never interpreted (no yogakaraka, functional-benefic/
+malefic, or maraka judgment is made or implied anywhere in this phase).
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus) — Lagna: **Leo**, Lagna Lord: **Sun**.
+
+| Bhava | Rashi | Lord | Grahas | Lord Placed In |
+|---|---|---|---|---|
+| 1 | Leo | Sun | — | 4 |
+| 2 | Virgo | Mercury | — | 3 |
+| 3 | Libra | Venus | Mercury, Venus, Rahu | 3 |
+| 4 | Scorpio | Mars | Sun, Jupiter | 12 |
+| 5 | Sagittarius | Jupiter | — | 4 |
+| 6 | Capricorn | Saturn | — | 7 |
+| 7 | Aquarius | Saturn | Saturn | 7 |
+| 8 | Pisces | Jupiter | — | 4 |
+| 9 | Aries | Mars | Ketu | 12 |
+| 10 | Taurus | Venus | — | 3 |
+| 11 | Gemini | Mercury | Moon | 3 |
+| 12 | Cancer | Moon | Mars | 11 |
+
+Planetary house ownership: Sun → [1]; Moon → [12]; Mars → [4, 9];
+Mercury → [2, 11]; Jupiter → [5, 8]; Venus → [3, 10]; Saturn → [6, 7].
+Rahu → Bhava 3 (Libra); Ketu → Bhava 9 (Aries) — exactly 6 Bhavas apart,
+matching their exact 180° tropical/sidereal opposition from Phase 4A.
+
+**Independent verification** (Part Q): the Whole-Sign mapping was
+manually re-derived from the Lagna Rashi and checked Graha-by-Graha
+against `bhavaNumberFromRashiIndex`, and the lordship table was checked
+against the classical scheme above — no disagreement found. `bhava.js`
+is additionally exercised directly (bypassing `calculateChart`) for all
+12 possible Lagna Rashis and for synthetic boundary Grahas (exactly 0°
+and 29.9997° within the same Rashi), confirming the mapping is correct
+independent of the one verification chart's own Lagna.
+
+**Regression**: Phase 4A's own `lagna`/`grahas`/`ayanamsha` objects, plus
+Modern Western, Classical, and Phase 3H summary outputs, are confirmed
+byte-for-byte unchanged by dedicated tests.
+
+UI: a new "Bhava Structure｜宫位结构" subsection was added inside the
+existing Vedic Astrology｜印度占星 section (Lagna/Lagna Lord, a 12-Bhava
+table, and a compact Navagraha → Bhava table) — additive only, the
+existing Phase 4A subsections are untouched. Verified in-browser at both
+desktop and 390px mobile width: no console errors, no horizontal page
+overflow (each wide table scrolls within its own container, matching
+the existing responsive pattern).
+
+New `chart.vedic.meta` fields (Phase 4A's own fields are unchanged
+except `bhavaSystem`, whose placeholder value is now superseded by the
+real implementation): `bhavaSystem: "whole_sign_from_lagna"`,
+`bhavaCuspModel: "none_rashi_based"`, `houseLordshipSystem:
+"traditional_jyotish_rashi_lordship"`, `bhavaChalit: "not_implemented"`,
+`functionalLordship: "not_implemented"`, `vedicHouseInterpretation:
+"none"`.
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (the temporary, dev-only Playwright UI check was
+fully uninstalled immediately after use, per this project's established
+pattern). All 429 tests pass (391 carried over from Phase 1–4A-audit
+unchanged, plus 38 new Phase 4B tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

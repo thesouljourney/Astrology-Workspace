@@ -30,11 +30,19 @@ function grahaLabel(key) {
   return n ? `${n.symbol} ${n.en}｜${n.cn}` : key;
 }
 
+const GRAHA_ENGLISH_TO_KEY = Object.fromEntries(Object.entries(GRAHA_NAMES).map(([key, n]) => [n.en, key]));
+
+/** chart.vedic.bhava's house.grahas/lord fields store plain English display names (e.g. "Moon") - relabel them bilingually for display, same as everywhere else in this section. */
+function grahaDisplayLabel(englishName) {
+  const key = GRAHA_ENGLISH_TO_KEY[englishName];
+  return key ? grahaLabel(key) : englishName;
+}
+
 export default function VedicAstrology({ chart }) {
   const { vedic } = chart;
   if (!vedic) return null;
 
-  const { meta, ayanamsha, lagna, grahas } = vedic;
+  const { meta, ayanamsha, lagna, grahas, bhava } = vedic;
   const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
 
   return (
@@ -78,12 +86,32 @@ export default function VedicAstrology({ chart }) {
             <td className="meta-cell">{meta.bhavaSystem}</td>
           </tr>
           <tr>
+            <td>Bhava Cusp Model｜宫位始点模型</td>
+            <td className="meta-cell">{meta.bhavaCuspModel}</td>
+          </tr>
+          <tr>
+            <td>House Lordship System｜宫主系统</td>
+            <td className="meta-cell">{meta.houseLordshipSystem}</td>
+          </tr>
+          <tr>
+            <td>Bhava Chalit｜宫位始点盘</td>
+            <td>{meta.bhavaChalit}</td>
+          </tr>
+          <tr>
+            <td>Functional Lordship｜功能性宫主判定</td>
+            <td>{meta.functionalLordship}</td>
+          </tr>
+          <tr>
             <td>Nakshatra System｜二十七宿系统</td>
             <td className="meta-cell">{meta.nakshatraSystem}</td>
           </tr>
           <tr>
             <td>Interpretation｜解读</td>
             <td>{meta.vedicInterpretation}</td>
+          </tr>
+          <tr>
+            <td>House Interpretation｜宫位解读</td>
+            <td>{meta.vedicHouseInterpretation}</td>
           </tr>
         </tbody>
       </table>
@@ -110,6 +138,76 @@ export default function VedicAstrology({ chart }) {
             <td>Tropical Longitude｜回归经度</td>
             <td>{lagna.tropicalLongitude.toFixed(4)}°</td>
           </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Bhava Structure｜宫位结构</h3>
+      <p className="reception-note">
+        Whole-Sign Bhavas from Lagna — categorical by Rashi only, no cusp degrees; ownership only, no functional
+        benefic/malefic or interpretation yet｜整宫制，以上升星座为基准 — 仅按星座分宫，无始点度数；仅宫主关系，尚未涉及功能性吉凶或解读
+      </p>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Lagna Rashi｜上升星座</td>
+            <td>{RASHI_LABEL[bhava.lagna.rashi] ?? bhava.lagna.rashi}</td>
+          </tr>
+          <tr>
+            <td>Lagna Lord｜上升主星</td>
+            <td>{grahaDisplayLabel(bhava.lagna.lord)}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Bhava｜宫位</th>
+            <th>Rashi｜星座</th>
+            <th>Lord｜宫主</th>
+            <th>Grahas｜行星</th>
+            <th>Lord Placed In｜宫主所在宫位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bhava.houses.map((house) => (
+            <tr key={house.bhavaNumber}>
+              <td>{house.bhavaNumber}</td>
+              <td>{RASHI_LABEL[house.rashi] ?? house.rashi}</td>
+              <td>{grahaDisplayLabel(house.lord)}</td>
+              <td>{house.grahas.length > 0 ? house.grahas.map((g) => grahaDisplayLabel(g)).join(", ") : "—"}</td>
+              <td>{house.lordPlacedInBhava}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+
+      <h4>Navagraha → Bhava｜九曜所在宫位</h4>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Rashi｜星座</th>
+            <th>Bhava｜宫位</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grahaKeys.map((key) => {
+            const placement = bhava.grahaPlacements[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{RASHI_LABEL[placement.rashi] ?? placement.rashi}</td>
+                <td>{placement.bhavaNumber}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       </div>
