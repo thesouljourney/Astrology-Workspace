@@ -16,6 +16,7 @@ import { buildClassicalChart } from "./classical/classicalChart.js";
 import { buildVedicChart } from "./vedic/vedicChart.js";
 import { buildCrossSystemEvidence } from "./crossSystem.js";
 import { buildTopicRetrieval } from "./topicRetrieval/index.js";
+import { ASTROLOGY_CALCULATION_GENERATION } from "./calculationGeneration.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -129,6 +130,12 @@ export function calculateChart(input) {
       houseSystem,
       nodeType,
       lilithType,
+      // Metadata-only stamp (Phase 7 pre-lock audit) - see
+      // calculationGeneration.js for the bump policy. Attaching it here
+      // never changes any calculation output; it exists purely so a
+      // future locked-calculation bug fix can be detected by Phase 7's
+      // chartFingerprint without inventing a separate lookup path.
+      astrologyCalculationGeneration: ASTROLOGY_CALCULATION_GENERATION,
       input,
     },
     planets: planetsWithSignAndHouse,

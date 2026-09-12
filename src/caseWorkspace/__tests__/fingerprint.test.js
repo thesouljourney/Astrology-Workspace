@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { calculateChart } from "../../astrology/ephemeris.js";
-import { computeChartFingerprint, deriveCalculationProfile } from "../fingerprint.js";
+import { computeChartFingerprint, deriveCalculationProfile, deriveCalculationVersionProfile } from "../fingerprint.js";
+import { ASTROLOGY_CALCULATION_GENERATION } from "../../astrology/calculationGeneration.js";
 
 const VERIFICATION_INPUT = {
   birthDate: "1994-11-21",
@@ -89,11 +90,43 @@ describe("Phase 7 fingerprint: B. deterministic and input-sensitive", () => {
     expect(profile.vedicBhavaSystem).toBe(c.vedic.meta.bhavaSystem);
   });
 
-  it("is a plain, JSON-serializable string", () => {
+  it("is a plain, JSON-serializable string, using the v2 payload prefix", () => {
     const c = chart();
     const fp = computeChartFingerprint(birthData, c);
     expect(typeof fp).toBe("string");
-    expect(fp.startsWith("fp1_")).toBe(true);
+    expect(fp.startsWith("fp2_")).toBe(true);
     expect(() => JSON.stringify({ fp })).not.toThrow();
+  });
+});
+
+describe("Phase 7 pre-lock audit fix: calculation-generation identity in the fingerprint", () => {
+  it("deriveCalculationVersionProfile reads astrologyCalculationGeneration off chart.meta and topicRetrievalVersion off chart.topicRetrieval.meta", () => {
+    const c = chart();
+    const versionProfile = deriveCalculationVersionProfile(c);
+    expect(versionProfile.astrologyCalculationGeneration).toBe(c.meta.astrologyCalculationGeneration);
+    expect(versionProfile.astrologyCalculationGeneration).toBe(ASTROLOGY_CALCULATION_GENERATION);
+    expect(versionProfile.topicRetrievalVersion).toBe(c.topicRetrieval.meta.topicRetrievalVersion);
+  });
+
+  it("changes when astrologyCalculationGeneration changes (simulated - proves a same-convention calculation bug fix would now be detected)", () => {
+    const c = chart();
+    const fp1 = computeChartFingerprint(birthData, c);
+    const c2 = { ...c, meta: { ...c.meta, astrologyCalculationGeneration: "astrology_calculation_generation_v2_hypothetical" } };
+    const fp2 = computeChartFingerprint(birthData, c2);
+    expect(fp1).not.toBe(fp2);
+  });
+
+  it("changes when topicRetrievalVersion changes (simulated - proves a Phase 6 recipe/schema generation change is detected)", () => {
+    const c = chart();
+    const fp1 = computeChartFingerprint(birthData, c);
+    const c2 = { ...c, topicRetrieval: { ...c.topicRetrieval, meta: { ...c.topicRetrieval.meta, topicRetrievalVersion: "phase_6_v2_hypothetical" } } };
+    const fp2 = computeChartFingerprint(birthData, c2);
+    expect(fp1).not.toBe(fp2);
+  });
+
+  it("does NOT include chart.classical.meta.technicalSummaryVersion, chart.vedic.meta.technicalSummaryVersion, or chart.crossSystem.meta.crossSystemVersion as redundant proxies", () => {
+    const c = chart();
+    const versionProfile = deriveCalculationVersionProfile(c);
+    expect(Object.keys(versionProfile).sort()).toEqual(["astrologyCalculationGeneration", "topicRetrievalVersion"]);
   });
 });

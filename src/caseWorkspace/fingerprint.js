@@ -1,12 +1,14 @@
 /**
- * Chart fingerprinting — Phase 7.
+ * Chart fingerprinting — Phase 7 (v2 payload, post pre-lock audit).
  *
  * THIS FILE PERFORMS NO ASTROLOGY CALCULATION. It reads a handful of
  * already-locked identifiers off an already-computed `chart` (Phase 1
  * `chart.meta`, Phase 3A `chart.classical.meta`, Phase 4A/4B/4D
- * `chart.vedic.meta`) and hashes them deterministically, purely to
- * detect when astrology-relevant input or a locked calculation
- * convention has changed since a Case's notes were written.
+ * `chart.vedic.meta`, Phase 6 `chart.topicRetrieval.meta`) and hashes
+ * them deterministically, purely to detect when astrology-relevant
+ * input, a locked calculation convention, or the underlying
+ * calculation/evidence-schema generation itself has changed since a
+ * Case's notes were written.
  *
  * `deriveCalculationProfile(chart)` intentionally reuses each phase's
  * OWN already-exported convention identifiers rather than inventing a
@@ -14,6 +16,28 @@
  * `chart.classical.meta.rulershipSystem` (locked since Phase 3A), never
  * a second hard-coded "traditional" string that could silently drift
  * out of sync with the real calculation.
+ *
+ * `deriveCalculationVersionProfile(chart)` closes the gap the pre-lock
+ * audit found: `deriveCalculationProfile()` alone only detects a
+ * DOCTRINE/CONVENTION change (e.g. switching node type), never a bug
+ * fix WITHIN an unchanged convention (e.g. correcting the Lahiri
+ * ayanamsha formula while its convention label stays the same). It
+ * carries exactly two fields, deliberately minimal:
+ *   - `astrologyCalculationGeneration` (`calculationGeneration.js`) -
+ *     the one project-wide, manually-bumped identity meant to cover
+ *     this gap for Phases 1-6 as a whole, going forward from this
+ *     audit (see that file's bump-rule doc comment).
+ *   - `topicRetrievalVersion` (`chart.topicRetrieval.meta`) - included
+ *     because Phase 7 renders `chart.topicRetrieval` DIRECTLY; a
+ *     material Phase 6 recipe/schema change can change what evidence a
+ *     human was looking at even when the natal calculation itself is
+ *     unchanged.
+ * Deliberately NOT included: `chart.classical.meta.technicalSummaryVersion`,
+ * `chart.vedic.meta.technicalSummaryVersion`, `chart.crossSystem.meta.crossSystemVersion`
+ * - these are each one aggregation layer's OWN schema version, not a
+ * calculation-output generation identity, and Phase 7 does not consume
+ * `chart.crossSystem` at all. Redundant proxies were deliberately left
+ * out to keep the fingerprint minimal and intentional.
  */
 
 /** Fields pulled from the chart that determine a Case's chartFingerprint. Anything NOT listed here (caseName, notes, timestamps, UI state) must never affect the fingerprint. */
@@ -32,6 +56,14 @@ export function deriveCalculationProfile(chart) {
     vedicAyanamsha: chart.vedic.meta.ayanamshaImplementation,
     vedicBhavaSystem: chart.vedic.meta.bhavaSystem,
     vedicNodeType: chart.vedic.meta.vedicNodeType,
+  };
+}
+
+/** The minimal, intentional set of version/generation identifiers included in the fingerprint - see this file's own doc comment for why each one is (or is not) here. */
+export function deriveCalculationVersionProfile(chart) {
+  return {
+    astrologyCalculationGeneration: chart.meta.astrologyCalculationGeneration,
+    topicRetrievalVersion: chart.topicRetrieval.meta.topicRetrievalVersion,
   };
 }
 
@@ -68,30 +100,45 @@ function canonicalize(value) {
 }
 
 /**
- * The exact, exhaustive set of fingerprint inputs (brief Part 15):
- * birth date/time/latitude/longitude/timezone, plus every
- * `deriveCalculationProfile()` field. Deliberately excludes caseName,
- * notes, timestamps, UI state, and display preferences.
+ * The exact, exhaustive set of fingerprint inputs: birth date/time/
+ * latitude/longitude/timezone, plus every `deriveCalculationProfile()`
+ * field, plus every `deriveCalculationVersionProfile()` field.
+ * Deliberately excludes caseName, placeName, notes, timestamps, UI
+ * state, and display preferences.
  */
-function fingerprintPayload(birthData, calculationProfile) {
+function fingerprintPayload(birthData, calculationProfile, calculationVersionProfile) {
   return {
-    birthDate: birthData.date,
-    birthTime: birthData.time,
-    latitude: Number(birthData.latitude),
-    longitude: Number(birthData.longitude),
-    timezone: birthData.timezone,
-    ...calculationProfile,
+    birthData: {
+      birthDate: birthData.date,
+      birthTime: birthData.time,
+      latitude: Number(birthData.latitude),
+      longitude: Number(birthData.longitude),
+      timezone: birthData.timezone,
+    },
+    calculationProfile,
+    calculationVersionProfile,
   };
 }
 
 /**
  * Computes the deterministic chartFingerprint for a Case's birthData
  * against an already-computed `chart`. Same birthData + same locked
- * calculation conventions => same fingerprint, always - changing only
- * caseName/notes/timestamps never touches this function's inputs.
+ * calculation conventions + same calculation-generation/topicRetrieval
+ * version => same fingerprint, always - changing only caseName/
+ * placeName/notes/timestamps never touches this function's inputs.
+ *
+ * Prefix bumped `fp1_` -> `fp2_` because the hashed payload's SHAPE
+ * changed (calculationVersionProfile added): this guarantees every
+ * fingerprint computed under the old (v1) algorithm can never
+ * accidentally collide with one computed under this (v2) algorithm,
+ * even for byte-identical birth data - old-fingerprint note groups are
+ * therefore automatically treated as historical (see Part 5 of the
+ * pre-lock audit and the README), with no separate migration code
+ * required.
  */
 export function computeChartFingerprint(birthData, chart) {
   const calculationProfile = deriveCalculationProfile(chart);
-  const payload = fingerprintPayload(birthData, calculationProfile);
-  return `fp1_${cyrb53(canonicalize(payload))}`;
+  const calculationVersionProfile = deriveCalculationVersionProfile(chart);
+  const payload = fingerprintPayload(birthData, calculationProfile, calculationVersionProfile);
+  return `fp2_${cyrb53(canonicalize(payload))}`;
 }

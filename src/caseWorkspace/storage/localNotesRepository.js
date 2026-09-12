@@ -23,6 +23,13 @@
  * is redundant with its position in this map by construction, kept only
  * because the Topic Note schema (brief Part 17) declares it on the
  * version itself - both are always written together and never drift.
+ *
+ * Every public method below is declared `async` and therefore ALWAYS
+ * returns a Promise, even though the work inside it is synchronous -
+ * the PUBLIC CONTRACT is async-compatible so a future
+ * `SupabaseNotesRepository` can implement the exact same method names
+ * against remote tables, and so no UI consumer is ever written against
+ * an assumption a network-backed implementation could not honor.
  */
 
 import { getDefaultStorage } from "./memoryStorage.js";
@@ -50,12 +57,12 @@ export function createLocalNotesRepository(storage = getDefaultStorage()) {
 
   return {
     /** The full raw workspace for one (caseId, topicId) pair - every chartFingerprint that has ever had notes, and every version within each. */
-    getWorkspace({ caseId, topicId }) {
+    async getWorkspace({ caseId, topicId }) {
       return readWorkspace(caseId, topicId);
     },
 
     /** Every chartFingerprint that has notes for this (caseId, topicId), most-recently-touched first. */
-    listFingerprints({ caseId, topicId }) {
+    async listFingerprints({ caseId, topicId }) {
       const workspace = readWorkspace(caseId, topicId);
       return Object.values(workspace.byFingerprint)
         .map((group) => ({
@@ -66,20 +73,20 @@ export function createLocalNotesRepository(storage = getDefaultStorage()) {
     },
 
     /** All versions for one specific chartFingerprint, sorted by versionNumber ascending. Empty array if none exist yet. */
-    listVersions({ caseId, topicId, chartFingerprint }) {
+    async listVersions({ caseId, topicId, chartFingerprint }) {
       const workspace = readWorkspace(caseId, topicId);
       const group = workspace.byFingerprint[chartFingerprint];
       return group ? [...group.versions].sort((a, b) => a.versionNumber - b.versionNumber) : [];
     },
 
     /** The version with the highest versionNumber for this fingerprint (draft/final/archived alike), or null if this fingerprint has no notes yet. */
-    getCurrentVersion({ caseId, topicId, chartFingerprint }) {
-      const versions = this.listVersions({ caseId, topicId, chartFingerprint });
+    async getCurrentVersion({ caseId, topicId, chartFingerprint }) {
+      const versions = await this.listVersions({ caseId, topicId, chartFingerprint });
       return versions.length > 0 ? versions[versions.length - 1] : null;
     },
 
     /** Creates a new blank Draft version for this fingerprint - versionNumber = (max existing for this fingerprint) + 1, or 1 if none exist. Never triggered by autosave; only by an explicit user action or a changed fingerprint. */
-    createVersion({ caseId, topicId, chartFingerprint }) {
+    async createVersion({ caseId, topicId, chartFingerprint }) {
       const workspace = readWorkspace(caseId, topicId);
       const group = workspace.byFingerprint[chartFingerprint] ?? { chartFingerprint, versions: [] };
       const nextVersionNumber = group.versions.reduce((max, v) => Math.max(max, v.versionNumber), 0) + 1;
@@ -98,7 +105,7 @@ export function createLocalNotesRepository(storage = getDefaultStorage()) {
      * policy is enforced here, not just in the UI, so no caller can
      * bypass it).
      */
-    saveDraft({ caseId, topicId, chartFingerprint, noteId, patch }) {
+    async saveDraft({ caseId, topicId, chartFingerprint, noteId, patch }) {
       const workspace = readWorkspace(caseId, topicId);
       const { group, version, index } = findVersion(workspace, chartFingerprint, noteId);
       if (!version) throw new Error(`saveDraft: no note version ${noteId} found for ${caseId}/${topicId}/${chartFingerprint}`);
@@ -115,7 +122,7 @@ export function createLocalNotesRepository(storage = getDefaultStorage()) {
     },
 
     /** Draft -> Final. Refuses to act on anything that isn't currently a Draft. */
-    markFinal({ caseId, topicId, chartFingerprint, noteId }) {
+    async markFinal({ caseId, topicId, chartFingerprint, noteId }) {
       const workspace = readWorkspace(caseId, topicId);
       const { group, version, index } = findVersion(workspace, chartFingerprint, noteId);
       if (!version) throw new Error(`markFinal: no note version ${noteId} found for ${caseId}/${topicId}/${chartFingerprint}`);
@@ -127,7 +134,7 @@ export function createLocalNotesRepository(storage = getDefaultStorage()) {
     },
 
     /** Draft or Final -> Archived. Content is preserved and remains readable via listVersions/getCurrentVersion; only its status changes. */
-    archiveVersion({ caseId, topicId, chartFingerprint, noteId }) {
+    async archiveVersion({ caseId, topicId, chartFingerprint, noteId }) {
       const workspace = readWorkspace(caseId, topicId);
       const { group, version, index } = findVersion(workspace, chartFingerprint, noteId);
       if (!version) throw new Error(`archiveVersion: no note version ${noteId} found for ${caseId}/${topicId}/${chartFingerprint}`);

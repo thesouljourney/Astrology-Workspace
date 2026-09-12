@@ -3335,27 +3335,32 @@ piece (pure functions and repositories, unit-testable without React);
 `src/components/caseWorkspace/` holds the UI that consumes them.
 
 ```
+src/astrology/
+  calculationGeneration.js    ASTROLOGY_CALCULATION_GENERATION (Phase 1-6 calculation-generation identity)
 src/caseWorkspace/
-  fingerprint.js            deriveCalculationProfile(), computeChartFingerprint()
-  caseModel.js               createCaseRecord() factory
+  fingerprint.js              deriveCalculationProfile(), deriveCalculationVersionProfile(), computeChartFingerprint()
+  caseModel.js                createCaseRecord() factory
   noteModel.js                createNoteVersion() factory, PHASE6_TOPIC_IDS
   caseChart.js                Case -> calculateChart() bridge (the ONLY astrology entry point)
   evidenceGrouping.js         Phase 6 evidence -> Phase 7 workflow-group classification (presentation only)
   autosaveController.js       framework-agnostic debounced autosave
+  asyncDataController.js      framework-agnostic stale-result-protected data loader
   storage/
     memoryStorage.js          in-memory Storage-compatible adapter + localStorage-or-memory picker
     storageKeys.js            namespaced/versioned key builders
     jsonStore.js               safe read/write helpers (malformed data never throws)
-    localCaseRepository.js     caseRepository implementation
-    localNotesRepository.js    notesRepository implementation
+    localCaseRepository.js     caseRepository implementation (Promise-returning contract)
+    localNotesRepository.js    notesRepository implementation (Promise-returning contract)
 src/components/caseWorkspace/
   CaseWorkspace.jsx           top-level container, owns the repository instances
   CaseManager.jsx             case list + create/rename/archive/switch (brief Part 23)
-  CaseOverview.jsx            birth-data summary + 8-topic progress grid
+  CaseOverview.jsx            birth-data summary + 8-topic progress grid + Edit Case entry point
+  EditCaseForm.jsx            Edit Case workflow (Part 4 of the pre-lock audit fix)
   TopicWorkspace.jsx          generic per-(Case,Topic) workspace - no second topic-recipe engine
   SystemEvidencePanel.jsx     one system's Phase 6 evidence regrouped into workflow sections
   NotesAndJudgmentSection.jsx System Notes / Cross-System Observation / Final Judgment + versioning UI
   useAutosave.js               React wrapper around autosaveController.js
+  useAsyncData.js               React wrapper around asyncDataController.js
   caseWorkspace.css            Phase 7's own stylesheet (same tokens as App.css)
 ```
 
@@ -3391,18 +3396,69 @@ never a score), versionNumber, status ("draft"|"final"|"archived"),
 createdAt, updatedAt }`. Every field starts blank; nothing is ever
 pre-filled with generated interpretation.
 
-**Chart fingerprint policy** (`fingerprint.js`): a deterministic,
-non-cryptographic hash (`cyrb53`, fixed seed, public-domain) of a
-canonical (recursively key-sorted) JSON serialization of exactly:
-birth date, birth time, latitude, longitude, timezone, plus every
-`deriveCalculationProfile()` field above. `crypto.subtle.digest` was
-deliberately NOT used - it is Promise-based, and this fingerprint must
-be computable synchronously in both the browser and a plain Node/vitest
-environment with zero new dependency; this is a change-detection
-fingerprint, not a security boundary, so a non-cryptographic hash is an
-appropriate and disclosed choice. Explicitly EXCLUDED from the
-fingerprint: `caseName`, all note content, timestamps, and UI state -
-confirmed by dedicated test.
+**Chart fingerprint policy** (`fingerprint.js`, v2 payload since the
+pre-lock audit): a deterministic, non-cryptographic hash (`cyrb53`,
+fixed seed, public-domain) of a canonical (recursively key-sorted) JSON
+serialization of `{ birthData: {birthDate, birthTime, latitude,
+longitude, timezone}, calculationProfile, calculationVersionProfile }`.
+`crypto.subtle.digest` was deliberately NOT used - it is Promise-based,
+and this fingerprint must be computable synchronously in both the
+browser and a plain Node/vitest environment with zero new dependency;
+this is a change-detection fingerprint, not a security boundary, so a
+non-cryptographic hash is an appropriate and disclosed choice.
+Explicitly EXCLUDED from the fingerprint: `caseName`, `placeName`, all
+note content, timestamps, and UI state - confirmed by dedicated test
+(a placeName-only edit is proven, by test, to leave the fingerprint
+unchanged, while the edited label itself is still saved on the Case).
+
+`calculationVersionProfile` (`deriveCalculationVersionProfile(chart)`)
+was added by the pre-lock audit to close a real gap: `calculationProfile`
+alone only detects a DOCTRINE/CONVENTION change (e.g. switching node
+type), never a bug fix WITHIN an unchanged convention (e.g. correcting
+the Lahiri ayanamsha formula while its convention label stays the
+same). It carries exactly two fields, deliberately minimal:
+- `astrologyCalculationGeneration` - see `calculationGeneration.js`
+  below.
+- `topicRetrievalVersion` (`chart.topicRetrieval.meta.topicRetrievalVersion`)
+  - included because Phase 7 renders `chart.topicRetrieval` DIRECTLY; a
+  material Phase 6 recipe/schema change can change what evidence a
+  human was looking at even when the natal calculation itself is
+  unchanged.
+
+Deliberately NOT included: `chart.classical.meta.technicalSummaryVersion`,
+`chart.vedic.meta.technicalSummaryVersion`, `chart.crossSystem.meta.crossSystemVersion`
+- each is one aggregation layer's OWN schema version, not a
+calculation-output generation identity, and Phase 7 does not consume
+`chart.crossSystem` at all - kept out to keep the fingerprint minimal
+and intentional rather than padded with redundant proxies.
+
+**`ASTROLOGY_CALCULATION_GENERATION`** (`src/astrology/calculationGeneration.js`,
+currently `"astrology_calculation_generation_v1"`, attached read-only to
+`chart.meta.astrologyCalculationGeneration` in `ephemeris.js`): a new
+project-level constant introduced by the pre-lock audit, NOT a
+historical claim about Phases 1-6's past - it is the start of an
+explicit versioning discipline from this point forward. **Bump rule**:
+increment it whenever a change to any locked astrology calculation or
+evidence-generating layer (Phases 1-6) could cause IDENTICAL astrology
+inputs/conventions to produce MATERIALLY DIFFERENT technical evidence
+(an ephemeris/house/node correction, a Classical dignity/aspect
+correction, a Vedic ayanamsha/Bhava/Nakshatra correction, etc.) - never
+for a CSS/UI/README/wording change, the Phase 7 Case/Notes feature
+itself, a storage-backend change, or a non-astrology refactor with
+provably identical output. See the file's own doc comment for the full
+example list. Bumping it automatically makes every existing Case's
+live-recomputed `chartFingerprint` diverge from whatever fingerprint its
+notes were written under - the exact same "written for an earlier
+chart version" mechanism a birth-data edit already triggers, with zero
+migration code needed.
+
+Old data written before this fix used the `fp1_` prefix (no
+`calculationVersionProfile`); this fix's payload always produces an
+`fp2_` fingerprint. Because the hashed payload's SHAPE changed, an
+`fp2_` fingerprint can never accidentally collide with an `fp1_` one
+even for byte-identical birth data - any pre-existing `fp1_`-keyed note
+group is therefore automatically treated as historical the next time
+its Case is opened (see "Previous local fingerprint data" below).
 
 **Note versioning & Final-editing policy**: versions are numbered
 per-`chartFingerprint` starting at 1. Autosave (`saveDraft`) updates the
@@ -3424,35 +3480,81 @@ under the new fingerprint) alongside a read-only "View Previous Notes"
 picker over every historical fingerprint that has notes. Nothing is ever
 deleted, silently migrated to the new fingerprint, or copied forward as
 if still valid - old notes remain exactly as written, under their own
-fingerprint, forever.
+fingerprint, forever. Verified end-to-end in-browser: editing a Case's
+birth time produces a new fingerprint, the banner appears, and selecting
+the old fingerprint from "View Previous Notes" shows the original note
+text unchanged.
 
-**Storage abstraction**: UI/service code never touches `localStorage`
-directly - every read/write goes through `caseRepository`/
-`notesRepository` (`create/get/list/update/rename/archive/unarchive` and
+**Edit Case** (`EditCaseForm.jsx`, added by the pre-lock audit - Case
+Overview's "Edit Case｜编辑案例" button): edits the same supported
+fields as Case creation - date, time, placeName, latitude, longitude,
+timezone, and the already-existing houseSystem/nodeType/lilithType
+selects (no new Classical/Vedic doctrine option, no new astrology
+setting, no geocoding API). On save it recomputes through the exact
+same locked `computeCaseChart()`/`calculateChart()` pipeline, derives a
+fresh `calculationProfile`, computes the new `chartFingerprint`, and
+calls `caseRepo.update()` on the **same `caseId`** - a person's Case
+identity never changes just because a birth-data typo was corrected.
+Historical notes under the old fingerprint are untouched (Edit Case
+never calls `notesRepository` at all); a placeName-only edit is saved
+onto the Case but leaves `chartFingerprint` unchanged (confirmed by
+dedicated test and in-browser).
+
+**Storage abstraction, now async-compatible** (Phase 7 pre-lock audit
+fix, Part 1): UI/service code never touches `localStorage` directly -
+every read/write goes through `caseRepository`/`notesRepository`
+(`create/get/list/update/rename/archive/unarchive` and
 `getWorkspace/listFingerprints/listVersions/getCurrentVersion/
-createVersion/saveDraft/markFinal/archiveVersion` respectively). The
-current implementation (`localCaseRepository.js`/
-`localNotesRepository.js`) is backed by `getDefaultStorage()`
-(`window.localStorage` when available and writable, else an in-memory
-fallback so a locked-down browser, SSR, or a plain Node/vitest
-environment never crashes). Storage keys are namespaced and versioned
-(`astro_workspace.v1.cases`, `astro_workspace.v1.case.<caseId>`,
+createVersion/saveDraft/markFinal/archiveVersion` respectively). **Every
+public method on both repositories is declared `async` and therefore
+always returns a Promise**, even though the current implementation's
+internal work (`localCaseRepository.js`/`localNotesRepository.js`,
+backed by `getDefaultStorage()` - `window.localStorage` when available
+and writable, else an in-memory fallback so a locked-down browser, SSR,
+or a plain Node/vitest environment never crashes) is synchronous. This
+replaces an earlier version of this section which claimed the
+interfaces were "async-friendly" while several UI consumers actually
+read a method's return value directly during render or inside
+`useMemo` - the pre-lock audit found this and it has been corrected: no
+component now reads a repository result as an already-resolved value.
+Reads go through `useAsyncData` (a thin wrapper around the
+framework-agnostic `asyncDataController.js`, state + effect +
+sequence-numbered stale-result protection - a slow, now-superseded load
+can never overwrite a newer Case/Topic/version selection); writes are
+`await`ed before any `reload()` re-read, and the create/rename/
+archive/unarchive/create-version/mark-final/archive-version actions all
+guard against double-submit while in flight. Storage keys are
+namespaced and versioned (`astro_workspace.v1.cases`,
+`astro_workspace.v1.case.<caseId>`,
 `astro_workspace.v1.notes.<caseId>.<topicId>`) via one shared
-`storageKeys.js`, so the on-disk shape is documented in exactly one
-place. Malformed or missing stored JSON never throws - `readJson()`
-resolves to a safe fallback in every case, confirmed by dedicated test.
+`storageKeys.js`. Malformed or missing stored JSON never throws -
+`readJson()` resolves to a safe fallback in every case.
 
 **Future Supabase compatibility** (NOT implemented in this phase - no
 package installed, no credentials, no environment variables, no network
-call, no auth): the repository interfaces are designed so a
-`SupabaseCaseRepository`/`SupabaseNotesRepository` could implement the
-exact same async-friendly method names against remote tables without
-the UI changing at all. Conceptual future mapping: a `cases` table
-mirroring the Case record one row per Case, and a `note_versions` table
-mirroring one row per Topic Note version (keyed by
-`caseId`/`topicId`/`chartFingerprint`/`versionNumber`, mirroring the
-local `byFingerprint -> versions[]` grouping). This mapping is
-documentation only - implementing it is explicitly future work.
+call, no auth): because the public contract is now genuinely
+Promise-returning end-to-end (see above), a future
+`SupabaseCaseRepository`/`SupabaseNotesRepository` can implement the
+exact same method names against remote tables and every existing UI
+consumer keeps working unmodified - this claim is now backed by the
+async-adapter tests in `asyncRepositoryAdapter.test.js`, which exercise
+both repositories wrapped in an artificial network-style delay.
+Conceptual future mapping: a `cases` table mirroring the Case record
+one row per Case, and a `note_versions` table mirroring one row per
+Topic Note version (keyed by `caseId`/`topicId`/`chartFingerprint`/
+`versionNumber`, mirroring the local `byFingerprint -> versions[]`
+grouping). This mapping is documentation only - implementing it is
+explicitly future work.
+
+**Previous local fingerprint data** (Part 5 of the pre-lock audit):
+because Phase 7 was still pre-lock when the fingerprint payload changed
+shape (`fp1_` -> `fp2_`), any note data a local browser had already
+accumulated under an `fp1_` key is preserved exactly where it is -
+nothing is deleted and nothing is re-keyed. Since a Case's
+live-recomputed fingerprint is now always `fp2_...`, such old data
+simply becomes historical the next time that Case is opened (the
+"written for an earlier chart version" mechanism above applies to it
+automatically, with no separate migration code).
 
 **Autosave policy**: `autosaveController.js` debounces ~1.5s after the
 last edit (never one save per keystroke), reports
@@ -3481,12 +3583,15 @@ Pending / Excluded) is a pure function of each item's own already-locked
 `sourcePath`, and never fabricates a section a topic's real evidence
 does not contain.
 
-**Unresolved / future items**: editing a Case's birth data after
-creation is not implemented (correcting a typo currently means creating
-a new Case) - not required by this phase's brief and left for future
-work; Supabase-backed repositories (see above); note search/export;
-per-Case tagging; a completion "score" was deliberately never built (out
-of scope by design, not an oversight).
+**Unresolved / future items**: Supabase-backed repositories (see
+above); note search/export; per-Case tagging; a completion "score" was
+deliberately never built (out of scope by design, not an oversight);
+`ASTROLOGY_CALCULATION_GENERATION`'s bump discipline is process-based
+(a maintainer must remember to bump it), not automatically enforced by
+a content hash of the actual rule tables - a stronger guarantee than
+"remember to bump a constant" was identified during the pre-lock audit
+as a possible future improvement but was not built, to avoid adding
+complexity beyond what the audit required.
 
 ---
 

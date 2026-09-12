@@ -21,6 +21,31 @@
   margin-top: 12px;
 }
 
+.ws-edit-case-form {
+  margin-top: 8px;
+}
+
+.ws-edit-case-heading {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+}
+
+.ws-edit-case-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ws-case-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 .ws-case-list-header {
   display: flex;
   gap: 8px;

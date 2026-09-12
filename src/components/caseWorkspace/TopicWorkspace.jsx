@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { SystemEvidencePanel } from "./SystemEvidencePanel.jsx";
 import { NotesAndJudgmentSection } from "./NotesAndJudgmentSection.jsx";
+import { useAsyncData } from "./useAsyncData.js";
 
 const SYSTEM_LABEL = {
   modernWestern: "Modern Western｜现代西洋占星",
@@ -12,27 +13,46 @@ const SYSTEM_LABEL = {
  * Generic workspace for ONE (Case, Phase 6 Topic) pair. Renders exactly
  * the evidence `chart.topicRetrieval` already resolved for this topic -
  * this file contains no astrology recipe of its own (brief Part 0/3).
+ *
+ * `notesRepository.listVersions`/`listFingerprints` are Promise-
+ * returning (Phase 7 pre-lock audit fix), so both are loaded via
+ * `useAsyncData` (with stale-result protection) instead of a
+ * synchronous `useMemo` read.
  */
 export function TopicWorkspace({ caseRecord, chart, currentFingerprint, topicId, notesRepo, onBack }) {
   const { caseId } = caseRecord;
   const topic = useMemo(() => chart.topicRetrieval.topics.find((t) => t.id === topicId), [chart, topicId]);
 
-  const [refreshTick, setRefreshTick] = useState(0);
   const [viewingFingerprint, setViewingFingerprint] = useState(null); // null = viewing the live current fingerprint
   const [selectedNoteId, setSelectedNoteId] = useState(null);
 
-  const refresh = () => setRefreshTick((t) => t + 1);
-
   const activeFingerprint = viewingFingerprint ?? currentFingerprint;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const versions = useMemo(() => notesRepo.listVersions({ caseId, topicId, chartFingerprint: activeFingerprint }), [caseId, topicId, activeFingerprint, refreshTick]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const historicalFingerprints = useMemo(() => notesRepo.listFingerprints({ caseId, topicId }).filter((f) => f.chartFingerprint !== currentFingerprint), [caseId, topicId, currentFingerprint, refreshTick]);
 
-  const currentVersionForFingerprint = versions.length > 0 ? versions[versions.length - 1] : null;
-  const selectedVersion = versions.find((v) => v.noteId === selectedNoteId) ?? currentVersionForFingerprint;
+  const {
+    data: versions,
+    loading: versionsLoading,
+    error: versionsError,
+    reload: reloadVersions,
+  } = useAsyncData(() => notesRepo.listVersions({ caseId, topicId, chartFingerprint: activeFingerprint }), [notesRepo, caseId, topicId, activeFingerprint]);
 
-  const showEarlierChartBanner = !viewingFingerprint && !currentVersionForFingerprint && historicalFingerprints.length > 0;
+  const {
+    data: historicalFingerprints,
+    loading: historicalLoading,
+    reload: reloadHistorical,
+  } = useAsyncData(
+    () => notesRepo.listFingerprints({ caseId, topicId }).then((all) => all.filter((f) => f.chartFingerprint !== currentFingerprint)),
+    [notesRepo, caseId, topicId, currentFingerprint],
+  );
+
+  function refresh() {
+    reloadVersions();
+    reloadHistorical();
+  }
+
+  const currentVersionForFingerprint = versions && versions.length > 0 ? versions[versions.length - 1] : null;
+  const selectedVersion = (versions ?? []).find((v) => v.noteId === selectedNoteId) ?? currentVersionForFingerprint;
+
+  const showEarlierChartBanner = !versionsLoading && !historicalLoading && !viewingFingerprint && !currentVersionForFingerprint && (historicalFingerprints?.length ?? 0) > 0;
 
   function selectVersion(noteId) {
     setSelectedNoteId(noteId);
@@ -77,7 +97,9 @@ export function TopicWorkspace({ caseRecord, chart, currentFingerprint, topicId,
 
       {viewingFingerprint && (
         <div className="ws-banner ws-banner-neutral">
-          <span>Viewing historical chart version {viewingFingerprint}｜正在查看历史图版本 {viewingFingerprint}</span>
+          <span>
+            Viewing historical chart version {viewingFingerprint}｜正在查看历史图版本 {viewingFingerprint}
+          </span>
           <button type="button" className="ws-btn" onClick={() => viewHistorical(null)}>
             Back to Current｜返回当前版本
           </button>
@@ -90,18 +112,23 @@ export function TopicWorkspace({ caseRecord, chart, currentFingerprint, topicId,
         ))}
       </div>
 
-      <NotesAndJudgmentSection
-        key={selectedVersion?.noteId ?? "no-version"}
-        caseId={caseId}
-        topicId={topicId}
-        chartFingerprint={activeFingerprint}
-        notesRepo={notesRepo}
-        version={selectedVersion}
-        versions={versions}
-        onSelectVersion={selectVersion}
-        onRefresh={refresh}
-        forceReadOnly={!!viewingFingerprint}
-      />
+      {versionsLoading && <p className="reception-note">Loading notes…｜加载笔记中…</p>}
+      {versionsError && <div className="error-box">{versionsError.message}</div>}
+
+      {!versionsLoading && !versionsError && (
+        <NotesAndJudgmentSection
+          key={selectedVersion?.noteId ?? "no-version"}
+          caseId={caseId}
+          topicId={topicId}
+          chartFingerprint={activeFingerprint}
+          notesRepo={notesRepo}
+          version={selectedVersion}
+          versions={versions}
+          onSelectVersion={selectVersion}
+          onRefresh={refresh}
+          forceReadOnly={!!viewingFingerprint}
+        />
+      )}
     </div>
   );
 }

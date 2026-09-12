@@ -30,6 +30,7 @@ function NoteField({ id, label, placeholder, value, readOnly, onChange, textarea
  */
 export function NotesAndJudgmentSection({ caseId, topicId, chartFingerprint, notesRepo, version, versions, onSelectVersion, onRefresh, forceReadOnly = false }) {
   const [fields, setFields] = useState(() => extractFields(version));
+  const [busy, setBusy] = useState(false); // prevents double-submit on version actions (Start/Mark Final/Create New/Archive)
 
   useEffect(() => {
     setFields(extractFields(version));
@@ -42,18 +43,22 @@ export function NotesAndJudgmentSection({ caseId, topicId, chartFingerprint, not
   });
 
   if (!version) {
+    async function handleStartNote() {
+      if (busy) return;
+      setBusy(true);
+      try {
+        await notesRepo.createVersion({ caseId, topicId, chartFingerprint });
+        await onRefresh();
+      } finally {
+        setBusy(false);
+      }
+    }
+
     return (
       <div className="ws-notes-section">
         <p className="reception-note">No note version exists yet for this chart version｜此图版本尚无笔记</p>
-        <button
-          type="button"
-          className="ws-btn ws-btn-primary"
-          onClick={() => {
-            notesRepo.createVersion({ caseId, topicId, chartFingerprint });
-            onRefresh();
-          }}
-        >
-          Start Note｜开始记录
+        <button type="button" className="ws-btn ws-btn-primary" onClick={handleStartNote} disabled={busy}>
+          {busy ? "Starting…｜创建中…" : "Start Note｜开始记录"}
         </button>
       </div>
     );
@@ -73,22 +78,40 @@ export function NotesAndJudgmentSection({ caseId, topicId, chartFingerprint, not
   }
 
   async function handleMarkFinal() {
-    await flush();
-    notesRepo.markFinal({ caseId, topicId, chartFingerprint, noteId: version.noteId });
-    onRefresh();
+    if (busy) return;
+    setBusy(true);
+    try {
+      await flush();
+      await notesRepo.markFinal({ caseId, topicId, chartFingerprint, noteId: version.noteId });
+      await onRefresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleCreateNewVersion() {
-    await flush();
-    const created = notesRepo.createVersion({ caseId, topicId, chartFingerprint });
-    onRefresh();
-    onSelectVersion(created.noteId);
+    if (busy) return;
+    setBusy(true);
+    try {
+      await flush();
+      const created = await notesRepo.createVersion({ caseId, topicId, chartFingerprint });
+      await onRefresh();
+      onSelectVersion(created.noteId);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleArchive() {
-    await flush();
-    notesRepo.archiveVersion({ caseId, topicId, chartFingerprint, noteId: version.noteId });
-    onRefresh();
+    if (busy) return;
+    setBusy(true);
+    try {
+      await flush();
+      await notesRepo.archiveVersion({ caseId, topicId, chartFingerprint, noteId: version.noteId });
+      await onRefresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -107,15 +130,15 @@ export function NotesAndJudgmentSection({ caseId, topicId, chartFingerprint, not
         {!forceReadOnly && (
           <div className="ws-version-actions">
             {!readOnly && (
-              <button type="button" className="ws-btn" onClick={handleMarkFinal}>
+              <button type="button" className="ws-btn" onClick={handleMarkFinal} disabled={busy}>
                 Mark as Final｜标记为最终版
               </button>
             )}
-            <button type="button" className="ws-btn" onClick={handleCreateNewVersion}>
+            <button type="button" className="ws-btn" onClick={handleCreateNewVersion} disabled={busy}>
               Create New Version｜新建版本
             </button>
             {version.status !== NOTE_STATUS.ARCHIVED && (
-              <button type="button" className="ws-btn" onClick={handleArchive}>
+              <button type="button" className="ws-btn" onClick={handleArchive} disabled={busy}>
                 Archive｜归档
               </button>
             )}
