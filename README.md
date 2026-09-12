@@ -2820,6 +2820,241 @@ intentional-exclusion cases with rationale, a live-metadata-still-drives-
 the-list proof, and a full Phase 4A–4F regression check). All 667 tests
 pass (652 prior + 15 new). Phase 4F remains safe to lock.
 
+## 25. Phase 5: Cross-System Evidence Mapping
+
+**Scope**: this phase does NOT interpret astrology. It builds a neutral
+mapping layer, `chart.crossSystem`, that tells the workspace what
+technical evidence already exists in Modern Western (Phase 1/2A),
+Classical (Phase 3A–3H), and Vedic (Phase 4A–4F), where that evidence
+lives, which concepts across the three systems belong to the same broad
+"concept family," and — just as importantly — which concepts must
+explicitly NOT be collapsed into each other. It performs **zero** new
+astronomical or astrological calculation and creates **no** new doctrine
+in any of the three systems. This is groundwork for a later Topic
+Retrieval Framework (e.g. "Career" → pull the right Western/Classical/
+Vedic evidence) — Phase 5 itself implements none of that retrieval.
+
+**Architecture**: `chart.crossSystem` (`src/astrology/crossSystem.js`)
+takes the fully-built `chart` (with `chart.classical` and `chart.vedic`
+already attached) as read-only input and returns a `structuredClone()`
+of its own result:
+
+```
+chart.crossSystem = {
+  meta,                  // Part Y
+  systems,                // Part B - the 3-system registry
+  evidenceAvailability,   // Part C - category x system status matrix
+  bodyIdentities,         // Part G/H - shared-body + node identity map
+  conceptFamilies,        // Parts D-M - descriptor groups
+  comparisonGroups,       // Part O - derived from conceptFamilies
+  nonEquivalentConcepts,  // Part N
+  unresolvedMappings,     // derived live from evidenceAvailability
+  provenance,             // Part P
+}
+```
+
+**Evidence addressing** (Parts T/U): every mapped item carries a
+`sourcePath` — a dot-separated path, relative to the top-level `chart`
+object, that the exported `resolveEvidencePath(chart, path)` can walk to
+the real value. A path segment on an object is a plain property lookup;
+a segment on an array is resolved by finding the element whose `id`,
+`key`, `planet`, `pairId`, `bhavaNumber`, or `house` field (tried in that
+order — all real identifying fields this codebase's own arrays already
+use) equals that segment. This lets `"vedic.summary.bhavas.10.lord"`
+resolve against the real array-of-12 `chart.vedic.summary.bhavas` by
+matching `bhavaNumber === 10`, without requiring that structure to be
+object-keyed. Every `sourcePath` in the module is confirmed, by dedicated
+test, to resolve to a defined value against the locked verification
+chart — "do not invent paths that do not exist" is enforced by that
+test, not merely by code review (67 sourcePaths collected from the real
+output, 62 unique, zero resolution failures).
+
+**Deviation from the brief's illustrative prefix** (documented per this
+project's standing practice of flagging every deviation): the brief's own
+examples use a `"modernWestern.*"` prefix, but no `chart.modernWestern`
+key exists anywhere in this codebase — Modern Western evidence lives at
+`chart.points`/`chart.planets`/`chart.angles`/`chart.houseCusps`. Since
+paths must match real schema, Modern Western sourcePaths are rooted at
+the real `"points"` array instead.
+
+**System registry** (Part B): all three systems report `available`,
+`zodiacType`, `source`, `summaryAvailable`, and `sourcePhases`. Modern
+Western's `summaryAvailable` is `false` — Phase 2A never built a
+dedicated aggregation layer like Phase 3H (Classical) or Phase 4F
+(Vedic); its evidence is read directly from `chart.points`/`chart.planets`/
+`chart.angles`/`chart.houseCusps`.
+
+**Evidence availability map** (Part C) — every `implemented`/
+`notImplemented` cell is a live predicate over the real computed chart
+(e.g. "does every classical planet have a `.dispositor` field?"), not a
+guess; `notApplicable` is reserved for a small, explicitly documented set
+of architecturally-foreign concepts (Vedic `houses`, Western/Classical
+`nakshatra`/`bhava`) and is never used to hide a genuine gap:
+
+| Concept | Modern Western | Classical | Vedic |
+|---|---|---|---|
+| Identity | ✓ | ✓ | ✓ |
+| Position | ✓ | ✓ | ✓ |
+| Zodiac | ✓ | ✓ | ✓ |
+| Houses | ✓ | ✓ | n/a |
+| House Lords | — | — | ✓ |
+| Angles | ✓ | — | — |
+| Aspects | — | ✓ | — |
+| Dignity | — | ✓ | ✓ |
+| Sect | ✓ | ✓ | — |
+| Planetary Condition | — | ✓ | ✓ |
+| Dispositor | — | ✓ | ✓ |
+| Reception | — | ✓ | — |
+| Perfection | — | ✓ | — |
+| Nakshatra | n/a | n/a | ✓ |
+| Bhava | n/a | n/a | ✓ |
+| Lordship Structure | — | — | ✓ |
+| Motion | ✓ | ✓ | ✓ |
+| Nodes | ✓ | — | ✓ |
+| Calculated Points | ✓ | — | — |
+| Provenance | ✓ | ✓ | ✓ |
+
+Notable honest gaps this audit surfaced: neither Modern Western nor
+Classical has ever computed a "chart ruler"/house-ruler field in this
+project (only Vedic's Bhava lord is implemented) — never fabricated to
+fill the `domain_lordship` concept family. Classical has no dedicated
+Angle-point evidence structure (angularity is folded into
+`operationalCondition` instead). Classical does not treat the lunar
+nodes as classical subjects at all (traditional 7 planets only).
+
+**Shared-body identity mapping** (Part G): the seven classical/shared
+planets (Sun...Saturn) are mapped across all three systems with real
+per-system longitude/sign/house-or-Bhava values and a `sourcePath` each;
+`numericallyEquivalent` is always `false` for these (tropical vs.
+sidereal), `conceptuallyRelated` always `true`. The three outer/modern
+planets (Uranus/Neptune/Pluto) are mapped Modern-Western-only —
+`conceptuallyRelated: false`, never approximated into Classical or Vedic.
+
+**Node mapping** (Part H): North Node/Rahu and South Node/Ketu are a
+`lunar_ascending_node`/`lunar_descending_node` concept family.
+`numericallyEquivalent` is computed LIVE from the two systems' actual
+node conventions for that chart (`chart.meta.nodeType` vs.
+`chart.vedic.meta.vedicNodeType`) — `false` by default (Western's default
+is `"true"`, Vedic is always `"mean"`), flipping to `true` only if the
+caller explicitly selects `nodeType: "mean"` for Western, confirmed by
+dedicated test.
+
+**Dignity/dispositor/condition/aspect mapping** (Parts I-L): each family
+keeps every system's descriptor, `sourcePath`, and provenance fully
+separate — Classical Essential Dignity and Vedic Dignity are grouped
+under one `planetary_status_by_sign` family label but never numerically
+combined; Classical's tropical dispositor chain and Vedic's sidereal
+Rashi-lordship chain are never merged; Classical combustion thresholds
+and Vedic combustion thresholds stay two separate descriptors even
+though both fall under `planetary_condition`; `vedicAspectStatus:
+not_implemented` is exposed explicitly rather than a fabricated Drishti
+equivalence.
+
+**Domain lordship mapping** (Part M): Western/Classical house-ruler
+evidence is `notImplemented` (never fabricated); Vedic Bhava lordship
+(Phase 4B/4E) is the only `implemented` entry in this family — no
+universal "10th ruler" field is created that would erase which system a
+fact came from.
+
+**Non-equivalent concept registry** (Part N) — 9 explicitly registered
+pairs, each with a plain-language reason (never "meaningless," only "not
+identical"):
+
+1. Western House (Placidus cusp) ≠ Vedic Bhava (Whole-Sign)
+2. Classical Essential Dignity ≠ Vedic Dignity
+3. Classical Reception ≠ Vedic Sign Relationship
+4. Classical Horary Perfection ≠ any current Vedic structure
+5. Western Aspect ≠ Classical Horary Perfection
+6. True Node (default) ≠ Mean Rahu
+7. Placidus 10th House ≠ Whole-Sign 10th Bhava
+8. Modern Chart Ruler ≠ Vedic Lagna Lord
+9. MC ≠ Vedic 10th Bhava
+
+**Comparison groups** (Part O) are derived directly from
+`conceptFamilies` (never a second, separately-maintained list) —
+`self_identity`, `house_structure`, `zodiac_framework`,
+`planetary_status_by_sign`, `dispositor_structure`,
+`planetary_condition`, `aspects`, `domain_lordship`, plus
+`classical_specific`/`vedic_specific`/`western_specific` for the
+mechanics that exist in only one system.
+
+**Unresolved mappings**: generated live by scanning `evidenceAvailability`
+for every `notImplemented` cell (19 for the verification chart) — never a
+hard-coded list, so a future phase that implements one of these features
+automatically drops off this list.
+
+**Provenance** (Part P): every descriptor names its real source phase
+(`phase_1`/`phase_2a` for Modern Western; `phase_3a`...`phase_3h` for
+Classical; `phase_4a`...`phase_4f` for Vedic) — Phase 5 is only the
+mapping source, never the source of the underlying astrology facts
+themselves.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus):
+
+| Body | Western Sign | Western House | Classical Sign | Classical House | Vedic Rashi | Vedic Bhava |
+|---|---|---|---|---|---|---|
+| Sun | Scorpio | 3 | Scorpio | 3 | Scorpio | 4 |
+| Moon | Gemini | 10 | Gemini | 10 | Gemini | 11 |
+| Mercury | Scorpio | 3 | Scorpio | 3 | Libra | 3 |
+| Venus | Scorpio | 2 | Scorpio | 2 | Libra | 3 |
+| Mars | Leo | 12 | Leo | 12 | Cancer | 12 |
+| Jupiter | Scorpio | 3 | Scorpio | 3 | Scorpio | 4 |
+| Saturn | Pisces | 6 | Pisces | 6 | Aquarius | 7 |
+
+Sun and Jupiter happen to land in Scorpio in BOTH the tropical and
+sidereal zodiac for this chart — a real, unforced coincidence, exactly
+the kind of apparent match Part F warns establishes nothing about zodiac
+framework equivalence (every other body above shows a different
+tropical/sidereal sign, as expected). ASC = Virgo (tropical); Lagna =
+Leo (sidereal) — different framework, never compared as if they should
+match. MC = Gemini (tropical); the Vedic 10th Bhava is Taurus, ruled by
+Venus (itself placed in Bhava 3, Moolatrikona, retrograde) — registered
+as non-equivalent constructs (Part N item 9), never merged. North
+Node/Rahu and South Node/Ketu both show `numericallyEquivalent: false`
+for this chart's default settings (Western `"true"` node vs. Vedic's
+fixed `"mean"` node).
+
+**Internal reconciliation**: every `bodyIdentities`/`evidenceAvailability`
+value was hand-verified against Phase 1/2A/3A-3H/4A-4F source data before
+acceptance — confirmed to match exactly, including the two evidence-
+availability predicate bugs a pre-lock check caught and fixed (an
+inverted absence-check for Modern Western dignity/planetaryCondition and
+for Classical's node-exclusion check) before this phase was considered
+correct.
+
+**Mutation isolation**: `buildCrossSystemEvidence()` returns
+`structuredClone()` of its result, matching Phase 4F's own established
+pattern — confirmed by 3 dedicated tests (one per source system) that
+mutating `chart.crossSystem` can never reach back into
+`chart.points`/`chart.classical`/`chart.vedic`.
+
+**UI**: a new "Cross-System Evidence｜跨体系证据" section was added at
+the end of the page (after Modern Western/Classical/Vedic) — System
+Availability, Shared Bodies, the full Evidence Availability Matrix,
+Concept Families, and the Non-Equivalent Concepts warning list. Verified
+in-browser at desktop (1100px) and mobile (390px) width: no console
+errors, no page-level horizontal overflow (wide tables scroll within
+their own container, matching every other technical table already in
+this app via the existing `*:has(> table)` CSS rule from the Responsive
+CSS fix).
+
+New metadata (`chart.crossSystem.meta`): `crossSystemVersion:
+"phase_5_v1"`, `crossSystemType: "evidence_mapping_layer"`,
+`crossSystemInterpretation: "none"`, `crossSystemComparisonPolicy:
+"conceptual_mapping_without_equivalence_or_scoring"`.
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (Playwright was again a temporary devDependency for
+the in-browser UI check only, fully uninstalled afterward). All 712
+tests pass (667 carried over from Phase 1–4F unchanged, plus 45 new
+Phase 5 tests).
+
+No concept was left deliberately unmapped without a documented reason —
+every category in `evidenceAvailability` and every pair in
+`nonEquivalentConcepts` traces to either a live-verified implementation
+fact or an explicit, reasoned `notApplicable`/`notImplemented` status.
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

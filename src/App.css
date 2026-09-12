@@ -263,3 +263,34 @@ th {
   font-size: 0.85rem;
   color: #555;
 }
+
+.cross-system-evidence {
+  margin-top: 40px;
+  border-top: 3px double #333;
+  padding-top: 8px;
+}
+
+.cs-implemented {
+  color: #2a6f2a;
+  font-weight: 600;
+}
+
+.cs-not-implemented {
+  color: #888;
+}
+
+.cs-not-applicable {
+  color: #888;
+  font-style: italic;
+}
+
+.non-equivalent-list {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 8px 0 16px;
+}
+
+.non-equivalent-list li {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}

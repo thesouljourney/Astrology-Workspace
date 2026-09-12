@@ -14,6 +14,7 @@ import { getZodiacSign, normalizeDegrees } from "./zodiac.js";
 import { buildModernWesternPoints } from "./modernWestern.js";
 import { buildClassicalChart } from "./classical/classicalChart.js";
 import { buildVedicChart } from "./vedic/vedicChart.js";
+import { buildCrossSystemEvidence } from "./crossSystem.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -142,6 +143,12 @@ export function calculateChart(input) {
   // already-verified tropical data above - never a second ephemeris, and
   // never mutating the Modern Western/Classical outputs.
   chart.vedic = buildVedicChart({ chart, astroTime });
+
+  // Phase 5: neutral cross-system evidence mapping layer, built purely
+  // from the now-complete Modern Western/Classical/Vedic structures
+  // above - no new astronomical or astrological calculation, no merge of
+  // the three systems, no mutation of chart.points/chart.classical/chart.vedic.
+  chart.crossSystem = buildCrossSystemEvidence({ chart });
 
   return chart;
 }
