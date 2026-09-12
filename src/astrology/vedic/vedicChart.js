@@ -69,6 +69,15 @@ import {
   VEDIC_FUNCTIONAL_LORDSHIP_STATUS,
   VEDIC_HOUSE_INTERPRETATION,
 } from "./bhava.js";
+import {
+  buildVedicNakshatra,
+  NAKSHATRA_SYSTEM,
+  NAKSHATRA_BOUNDARY_POLICY,
+  NAKSHATRA_LORD_SEQUENCE_NAME,
+  DASHA_SYSTEM_STATUS,
+  NAVAMSA_FROM_PADA_STATUS,
+  NAKSHATRA_INTERPRETATION,
+} from "./nakshatra.js";
 
 export { NAVAGRAHA_ORDER };
 
@@ -244,6 +253,12 @@ export function buildVedicChart({ chart, astroTime }) {
   // mutated (Bhava data lives in its own additive `chart.vedic.bhava`).
   const bhava = buildVedicBhava({ lagna, grahas });
 
+  // Phase 4C: Nakshatra/Pada placement, derived purely from the same
+  // already-locked sidereal Lagna/Graha longitudes above - no second
+  // sidereal engine, no ayanamsha recomputation, and (like Bhava) never
+  // mutating Phase 4A's own `lagna`/`grahas` objects.
+  const nakshatra = buildVedicNakshatra({ lagna, grahas });
+
   const meta = {
     vedicSystem: "jyotish",
     zodiacType: "sidereal",
@@ -260,10 +275,15 @@ export function buildVedicChart({ chart, astroTime }) {
     houseLordshipSystem: VEDIC_HOUSE_LORDSHIP_SYSTEM,
     bhavaChalit: VEDIC_BHAVA_CHALIT_STATUS,
     functionalLordship: VEDIC_FUNCTIONAL_LORDSHIP_STATUS,
-    nakshatraSystem: "not_yet_implemented",
+    nakshatraSystem: NAKSHATRA_SYSTEM,
+    nakshatraBoundaryPolicy: NAKSHATRA_BOUNDARY_POLICY,
+    nakshatraLordSequence: NAKSHATRA_LORD_SEQUENCE_NAME,
+    dashaSystem: DASHA_SYSTEM_STATUS,
+    navamsaFromPada: NAVAMSA_FROM_PADA_STATUS,
     vedicInterpretation: "none",
     vedicHouseInterpretation: VEDIC_HOUSE_INTERPRETATION,
+    nakshatraInterpretation: NAKSHATRA_INTERPRETATION,
   };
 
-  return { meta, ayanamsha, lagna, grahas, bhava };
+  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra };
 }

@@ -188,12 +188,16 @@ describe("TEST 14: Phase 4A lagna/grahas remain unmutated by Phase 4B's Bhava st
   });
 });
 
-describe("TEST 15: no Nakshatra assignment exists yet", () => {
-  it("no nakshatra/pada field anywhere in chart.vedic.grahas/lagna, and metadata explicitly says not_yet_implemented", () => {
+describe("TEST 15: Phase 4A lagna/grahas remain unmutated by Phase 4C's Nakshatra structure", () => {
+  it("Nakshatra data lives only in the separate, additive chart.vedic.nakshatra - Phase 4A's own lagna/grahas objects never gain a nakshatra/pada field", () => {
     const chart = calculateChart(VERIFICATION_INPUT);
-    expect(chart.vedic.meta.nakshatraSystem).toBe("not_yet_implemented");
-    // Check the actual data (grahas/lagna), not the metadata block itself -
-    // the metadata key "nakshatraSystem" legitimately contains "nakshatra".
+    // Phase 4C now implements Nakshatra/Pada (see the dedicated
+    // nakshatra.test.js for its own full test suite) - the
+    // "not_yet_implemented" placeholder this test originally guarded is
+    // gone by design. What this test still guards is that Phase 4A's own
+    // objects were never mutated to carry that new data.
+    expect(chart.vedic.meta.nakshatraSystem).toBe("27_nakshatra_4_pada");
+    expect(chart.vedic).toHaveProperty("nakshatra");
     const dataJson = JSON.stringify({ grahas: chart.vedic.grahas, lagna: chart.vedic.lagna });
     expect(dataJson).not.toMatch(/nakshatra|\bpada\b|vimshottari|dasha/i);
   });
@@ -294,7 +298,7 @@ describe("TEST 24: output is JSON serializable", () => {
     const json = JSON.stringify(chart.vedic);
     expect(typeof json).toBe("string");
     const parsed = JSON.parse(json);
-    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "grahas", "lagna", "meta"].sort());
+    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "grahas", "lagna", "meta", "nakshatra"].sort());
     expect(Object.keys(parsed.grahas).length).toBe(9);
   });
 

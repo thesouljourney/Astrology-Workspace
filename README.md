@@ -1839,6 +1839,124 @@ fully uninstalled immediately after use, per this project's established
 pattern). All 429 tests pass (391 carried over from Phase 1–4A-audit
 unchanged, plus 38 new Phase 4B tests).
 
+## 21. Phase 4C: Vedic Nakshatra & Pada
+
+**Scope**: this phase places every Navagraha and the Lagna into the
+27-Nakshatra / 4-Pada structure, using only the sidereal longitudes
+Phase 4A already computed and locked — no tropical recomputation, no
+ayanamsha recomputation, no second sidereal engine. It exposes each
+Nakshatra's Vimshottari lord (for identification only), a prominently-
+surfaced Moon Nakshatra summary, and a separate Lagna Nakshatra. It
+deliberately does **not** implement Dasha of any kind (Mahadasha,
+Antardasha, Pratyantardasha, balance-at-birth, or a timeline), Navamsa/
+D9/any Varga, Tara Bala, or any interpretation — `chart.vedic.meta`
+marks every one of those explicitly `"not_implemented"`/`"none"`.
+
+**Architecture — zero new sidereal engine**: `chart.vedic.nakshatra` is
+derived entirely from `chart.vedic.lagna.siderealLongitude` and each
+`chart.vedic.grahas[*].siderealLongitude` (`src/astrology/vedic/nakshatra.js`)
+— Phase 4A's own `lagna`/`grahas` objects are never mutated; all new
+data lives in the separate, additive `chart.vedic.nakshatra` structure.
+
+**Geometry**: 27 Nakshatras span the 360-degree sidereal zodiac, each
+spanning exactly `360 / 27` degrees (13°20′); each Nakshatra divides
+into 4 Padas, each spanning exactly `360 / 108` degrees (3°20′). Both
+spans are computed as exact fractions in code, never a rounded decimal
+literal like `13.33`.
+
+**Floating-point safety** (the phase's central technical risk): `360/27`
+is not exactly representable in IEEE-754 double precision, so naively
+comparing a longitude against `nakshatraIndex * (360/27)` risks landing
+a few ULPs to the wrong side of an intended boundary. This module avoids
+that by doing every Nakshatra/Pada index decision in an integer
+**microarcsecond** space instead: `360° = 1,296,000,000,000`
+microarcseconds, and both `1,296,000,000,000 / 27 = 48,000,000,000` and
+`1,296,000,000,000 / 108 = 12,000,000,000` divide **exactly**, with zero
+rounding error in the span constants themselves (unlike `360/27` in raw
+degrees). A longitude is converted into this space via
+`Math.round(degrees * 3.6e9)`, which snaps away sub-microarcsecond
+binary floating-point noise (around 1e-10 microarcsecond for longitudes
+in the 0–360° range) while preserving every deliberate boundary-test
+difference this phase relies on (e.g. the 0.001-arcsecond/1,000-
+microarcsecond gap between `13°19′59.999″` and the exact `13°20′`
+boundary is nine orders of magnitude larger than the noise being
+filtered). The human-readable `degreeWithinNakshatra` returned to
+callers is derived back from that same integer space, so the displayed
+degree and the assigned Pada can never disagree with each other. The
+stored Phase 4A sidereal longitude itself is never rounded or degraded —
+only this module's internal index arithmetic uses the integer form.
+
+**Boundary policy**: half-open intervals, `[start, end)` — the start of
+a Nakshatra or Pada belongs to it; the end boundary belongs to the next
+one. E.g. exactly `13°20′00.000″` is Bharani Pada 1, not the end of
+Ashwini Pada 4; `13°19′59.999″` is (the very end of) Ashwini.
+
+**Nakshatra lord sequence** (Vimshottari 9-lord cycle, used *only* to
+identify each Nakshatra's lord — no Dasha of any kind is computed
+anywhere in this phase): Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter,
+Saturn, Mercury — repeating three times across the 27 Nakshatras (e.g.
+Ashwini/Magha/Purva Ashadha all share Ketu; Bharani/Purva Phalguni/
+Uttara Ashadha all share Venus).
+
+**Rahu/Ketu**: both receive ordinary Nakshatra/Pada placement from their
+own Phase 4A sidereal longitude, with no special-cased index logic.
+Since 180° is exactly 54 Pada-spans (108 total Padas around the
+zodiac), Rahu and Ketu are confirmed by test to always sit exactly 54
+global-Pada-slots apart — the same exact opposition already established
+for their tropical/sidereal longitudes in Phase 4A.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus):
+
+Lagna Nakshatra: **Magha** (#10), Lord **Ketu**, Pada 4.
+Moon Nakshatra: **Mrigashira** (#5), Lord **Mars**, Pada 3.
+
+| Graha | Sidereal Longitude | Nakshatra | Lord | Pada | Degree Within Nakshatra |
+|---|---|---|---|---|---|
+| Sun | 214.3899° | Anuradha (17) | Saturn | 1 | 01°03′23.5″ |
+| Moon | 60.9289° | Mrigashira (5) | Mars | 3 | 07°35′44.0″ |
+| Mars | 119.2939° | Ashlesha (9) | Mercury | 4 | 12°37′37.9″ |
+| Mercury | 201.3615° | Vishakha (16) | Jupiter | 1 | 01°21′41.6″ |
+| Jupiter | 212.0970° | Vishakha (16) | Jupiter | 4 | 12°05′49.1″ |
+| Venus | 188.8760° | Swati (15) | Rahu | 1 | 02°12′33.4″ |
+| Saturn | 312.0059° | Shatabhisha (24) | Rahu | 2 | 05°20′21.2″ |
+| Rahu | 200.1638° | Vishakha (16) | Jupiter | 1 | 00°09′49.8″ |
+| Ketu | 20.1638° | Bharani (2) | Venus | 3 | 06°49′49.8″ |
+
+**Independent verification**: the Nakshatra index and Pada for every row
+above were manually recomputed from the sidereal longitude
+(`floor(L / (360/27))`, `floor(degreeWithinNakshatra / (360/108))`) and
+matched; the lord sequence was checked against the standard Vimshottari
+cycle above with no disagreement. `getNakshatra()` is additionally
+exercised directly (bypassing `calculateChart`) at every one of the 27
+Nakshatra boundaries and all 108 Pada boundaries, one microarcsecond on
+each side, confirming correct classification independent of the one
+verification chart's own placements.
+
+**Regression**: Phase 4A's own `lagna`/`grahas`/`ayanamsha`, Phase 4B's
+`bhava`, and Modern Western/Classical/Phase 3H outputs are confirmed
+byte-for-byte unchanged by dedicated tests.
+
+UI: a new "Nakshatra & Pada｜二十七宿与 Pada" subsection was added inside
+the existing Vedic Astrology｜印度占星 section (Moon Nakshatra and Lagna
+Nakshatra displayed prominently, then a compact Navagraha → Nakshatra/
+Pada table) — additive only, existing Phase 4A/4B subsections untouched.
+Verified in-browser at desktop and 390px mobile width: no console
+errors, no horizontal page overflow.
+
+New `chart.vedic.meta` fields (Phase 4A's own `nakshatraSystem`
+placeholder is now superseded by the real implementation, exactly as
+`bhavaSystem` was in Phase 4B): `nakshatraSystem: "27_nakshatra_4_pada"`,
+`nakshatraBoundaryPolicy: "half_open_start_inclusive_end_exclusive"`,
+`nakshatraLordSequence: "vimshottari_9_lord_cycle"`, `dashaSystem:
+"not_implemented"`, `navamsaFromPada: "not_implemented"`,
+`nakshatraInterpretation: "none"`.
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (the temporary, dev-only Playwright UI check was
+fully uninstalled immediately after use). All 469 tests pass (429
+carried over from Phase 1–4B unchanged, plus 40 new Phase 4C tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

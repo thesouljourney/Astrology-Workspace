@@ -42,7 +42,7 @@ export default function VedicAstrology({ chart }) {
   const { vedic } = chart;
   if (!vedic) return null;
 
-  const { meta, ayanamsha, lagna, grahas, bhava } = vedic;
+  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra } = vedic;
   const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
 
   return (
@@ -106,12 +106,32 @@ export default function VedicAstrology({ chart }) {
             <td className="meta-cell">{meta.nakshatraSystem}</td>
           </tr>
           <tr>
+            <td>Nakshatra Boundary Policy｜宿始点边界规则</td>
+            <td className="meta-cell">{meta.nakshatraBoundaryPolicy}</td>
+          </tr>
+          <tr>
+            <td>Nakshatra Lord Sequence｜宿主序列</td>
+            <td className="meta-cell">{meta.nakshatraLordSequence}</td>
+          </tr>
+          <tr>
+            <td>Dasha System｜大运系统</td>
+            <td>{meta.dashaSystem}</td>
+          </tr>
+          <tr>
+            <td>Navamsa From Pada｜Pada 推 Navamsa</td>
+            <td>{meta.navamsaFromPada}</td>
+          </tr>
+          <tr>
             <td>Interpretation｜解读</td>
             <td>{meta.vedicInterpretation}</td>
           </tr>
           <tr>
             <td>House Interpretation｜宫位解读</td>
             <td>{meta.vedicHouseInterpretation}</td>
+          </tr>
+          <tr>
+            <td>Nakshatra Interpretation｜宿之解读</td>
+            <td>{meta.nakshatraInterpretation}</td>
           </tr>
         </tbody>
       </table>
@@ -205,6 +225,62 @@ export default function VedicAstrology({ chart }) {
                 <td>{grahaLabel(key)}</td>
                 <td>{RASHI_LABEL[placement.rashi] ?? placement.rashi}</td>
                 <td>{placement.bhavaNumber}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Nakshatra & Pada｜二十七宿与 Pada</h3>
+      <p className="reception-note">
+        27-Nakshatra / 4-Pada placement only — no Dasha, no Navamsa, no interpretation yet｜仅为二十七宿与四分之一（Pada）位置 —
+        尚未涉及大运、Navamsa 或解读
+      </p>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Moon Nakshatra｜月亮所在宿</td>
+            <td>
+              {nakshatra.moonNakshatra.name} — Lord: {grahaDisplayLabel(nakshatra.moonNakshatra.lord)}, Pada{" "}
+              {nakshatra.moonNakshatra.pada}
+            </td>
+          </tr>
+          <tr>
+            <td>Lagna Nakshatra｜上升点所在宿</td>
+            <td>
+              {nakshatra.lagna.nakshatra} — Lord: {grahaDisplayLabel(nakshatra.lagna.nakshatraLord)}, Pada{" "}
+              {nakshatra.lagna.pada}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Nakshatra｜宿</th>
+            <th>Lord｜宿主</th>
+            <th>Pada｜位</th>
+            <th>Degree Within Nakshatra｜宿内度数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grahaKeys.map((key) => {
+            const n = nakshatra.grahas[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>
+                  {n.nakshatra} ({n.nakshatraNumber})
+                </td>
+                <td>{grahaDisplayLabel(n.nakshatraLord)}</td>
+                <td>{n.pada}</td>
+                <td>{n.degreeFormatted}</td>
               </tr>
             );
           })}
