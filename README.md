@@ -3139,7 +3139,7 @@ full-regression checks). All 726 tests pass (712 prior + 14 new). Phase
 
 ---
 
-## 26. Phase 6: Topic Retrieval Framework
+## 26. Phase 6: Topic Retrieval Framework — LOCKED
 
 **Scope**: this phase does NOT interpret astrology, and it does NOT
 calculate any new astrology. It builds a retrieval layer,
@@ -3292,10 +3292,23 @@ page-level horizontal overflow and zero console errors at 390px, 430px,
 
 No new production dependency was added. `chart.topicRetrieval` does not
 mutate `chart.points`/`chart.classical`/`chart.vedic`/`chart.crossSystem`
-in any way — confirmed by dedicated test. All 758 tests pass (726 prior
-+ 32 new). **This phase has not been declared locked** — see the
-accompanying implementation report for the full audit and an explicit
-list of what remains open for review before locking.
+in any way — confirmed by dedicated test. All 760 tests pass (726 prior
++ 32 Phase 6 + 2 pre-lock-audit regression tests).
+
+**LOCKED baseline** (independent review passed): 8 Topic Recipes, 277
+evidence descriptors — 131 always-available, 18 contextual (8
+triggered, 10 non-triggered), 74 future_required, 53 excluded, 1
+convention_pending — 149 source-path resolutions attempted, 149
+successful, 0 failed, 51 unique source paths, 760 tests passing,
+production build succeeds. The final pre-lock audit additionally
+confirmed classical house-lord derivation uses each house's own cusp
+sign (never the Ascendant sign generally) against all 12
+verification-chart house-lord mappings, that Classical contextual
+relationships retrieve only existing Phase 3E/3F/3H evidence with no
+recalculation of aspects/reception/dispositor/perfection, and that
+excluded evidence is metadata/debug-only and triggers no calculation.
+The Classical maternal natural significator remains intentionally
+`convention_pending` and is not resolved by this lock.
 
 ---
 
