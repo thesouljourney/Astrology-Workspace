@@ -282,10 +282,16 @@ describe("TEST 22: no Vedic interpretation text exists", () => {
     // chart.vedic.meta AND chart.vedic.lordship.meta legitimately have
     // KEYS named functionalBenefic/functionalMalefic (each explicitly
     // valued "not_implemented"), which would otherwise false-positive
-    // this substring scan on the key name itself.
-    const { meta, lordship, ...restOfVedic } = chart.vedic;
+    // this substring scan on the key name itself. Phase 4F's own
+    // chart.vedic.summary.meta re-exposes the same keys, and its
+    // unresolvedConventions array legitimately lists "functional_benefic"/
+    // "functional_malefic" as live-scanned topic labels (the same
+    // not_implemented markers, not new interpretation) - both excluded
+    // for the same reason.
+    const { meta, lordship, summary, ...restOfVedic } = chart.vedic;
     const { meta: lordshipMeta, ...lordshipData } = lordship;
-    const dataJson = JSON.stringify({ ...restOfVedic, lordship: lordshipData });
+    const { meta: summaryMeta, unresolvedConventions, ...summaryData } = summary;
+    const dataJson = JSON.stringify({ ...restOfVedic, lordship: lordshipData, summary: summaryData });
     expect(dataJson).not.toMatch(/\bstrong\b|\bweak\b|benefic|malefic|\bgood\b|\bbad\b/i);
     // Every meta field that MENTIONS one of these doctrines must be
     // explicitly "not_implemented"/"none" - never an inferred value.
@@ -294,12 +300,13 @@ describe("TEST 22: no Vedic interpretation text exists", () => {
     expect(meta.functionalMalefic).toBe("not_implemented");
     expect(lordshipMeta.functionalBenefic).toBe("not_implemented");
     expect(lordshipMeta.functionalMalefic).toBe("not_implemented");
+    expect(summaryMeta.technicalSummaryInterpretation).toBe("none");
   });
 
-  it("no exalted/debilitated/friend/enemy language anywhere OUTSIDE Phase 4D's own condition data and Phase 4E's own lordship data (both explicitly reuse Phase 4D's approved technical field names/values, not interpretation - see condition.test.js/lordship.test.js for their own full test suites)", () => {
+  it("no exalted/debilitated/friend/enemy language anywhere OUTSIDE Phase 4D's own condition data, Phase 4E's own lordship data, and Phase 4F's own summary data (all three explicitly reuse Phase 4D's approved technical field names/values, not interpretation - see condition.test.js/lordship.test.js/summary.test.js for their own full test suites)", () => {
     const chart = calculateChart(VERIFICATION_INPUT);
-    const { condition, lordship, ...vedicWithoutConditionOrLordship } = chart.vedic;
-    const json = JSON.stringify(vedicWithoutConditionOrLordship);
+    const { condition, lordship, summary, ...vedicWithoutConditionOrLordshipOrSummary } = chart.vedic;
+    const json = JSON.stringify(vedicWithoutConditionOrLordshipOrSummary);
     expect(json).not.toMatch(/exalted|debilitat|friendly|enem/i);
   });
 });
@@ -318,7 +325,9 @@ describe("TEST 24: output is JSON serializable", () => {
     const json = JSON.stringify(chart.vedic);
     expect(typeof json).toBe("string");
     const parsed = JSON.parse(json);
-    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "condition", "grahas", "lagna", "lordship", "meta", "nakshatra"].sort());
+    expect(Object.keys(parsed).sort()).toEqual(
+      ["ayanamsha", "bhava", "condition", "grahas", "lagna", "lordship", "meta", "nakshatra", "summary"].sort(),
+    );
     expect(Object.keys(parsed.grahas).length).toBe(9);
   });
 

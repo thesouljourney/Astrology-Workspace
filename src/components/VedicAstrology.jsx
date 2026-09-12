@@ -68,6 +68,30 @@ function categoricalDignityLabels(dignity) {
   return categorical.map((label) => DIGNITY_STATUS_LABEL[label] ?? label).join(", ");
 }
 
+const UNRESOLVED_TOPIC_LABEL = {
+  bhava_chalit: "Bhava Chalit｜宫位始点盘",
+  functional_lordship: "Functional Lordship｜功能性宫主判定",
+  dasha_system: "Dasha｜大运",
+  navamsa_from_pada: "Navamsa (from Pada)｜Navamsa（九分盘）",
+  temporary_friendship: "Temporary Friendship｜临时关系",
+  compound_friendship: "Compound Friendship｜复合关系",
+  shadbala: "Shadbala｜六重力",
+  functional_benefic: "Functional Benefic｜功能性吉星",
+  functional_malefic: "Functional Malefic｜功能性凶星",
+  yogakaraka: "Yogakaraka｜瑜伽卡拉卡",
+  maraka: "Maraka｜生死主",
+  badhaka: "Badhaka｜阻碍主",
+  dispositor_loop_ordered_path: "Dispositor Loop Ordered Path｜守护星循环方向路径",
+};
+
+const PHASE_LABEL = {
+  phase_4a: "Phase 4A — Sidereal Foundation & Navagraha｜恒星黄道基础与九曜",
+  phase_4b: "Phase 4B — Bhava House Structure｜宫位结构",
+  phase_4c: "Phase 4C — Nakshatra & Pada｜二十七宿与 Pada",
+  phase_4d: "Phase 4D — Dignity & Planetary Condition｜尊贵与行星状态",
+  phase_4e: "Phase 4E — Dispositor, Lordship & Functional Structure｜守护星与宫主结构",
+};
+
 const RELATIONSHIP_LABEL = {
   self: "Self｜自己",
   friend: "Friend｜友",
@@ -79,7 +103,7 @@ export default function VedicAstrology({ chart }) {
   const { vedic } = chart;
   if (!vedic) return null;
 
-  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship } = vedic;
+  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship, summary } = vedic;
   const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
   const classicalGrahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"];
 
@@ -715,6 +739,128 @@ export default function VedicAstrology({ chart }) {
                     <td>{g.nodeType}</td>
                   </tr>
                 )}
+              </tbody>
+            </table>
+          </details>
+        );
+      })}
+
+      <h3>Technical Summary｜技术摘要</h3>
+      <p className="reception-note">
+        A normalized, read-only aggregation of Phase 4A–4E evidence — no new calculation, no new astrology rule, no
+        interpretation｜第4A–4E阶段证据的规范化只读汇总 — 无新计算、无新占星规则、无解读
+      </p>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Lagna｜上升点</td>
+            <td>
+              {RASHI_LABEL[summary.chartOverview.lagna.rashi] ?? summary.chartOverview.lagna.rashi} — Lord:{" "}
+              {grahaDisplayLabel(summary.chartOverview.lagna.lagnaLord)}, Nakshatra: {summary.chartOverview.lagna.nakshatra} Pada{" "}
+              {summary.chartOverview.lagna.pada}
+            </td>
+          </tr>
+          <tr>
+            <td>Graha Evidence Coverage｜行星证据覆盖</td>
+            <td>{Object.keys(summary.grahas).length} / 9 Navagraha</td>
+          </tr>
+          <tr>
+            <td>Bhava Evidence Coverage｜宫位证据覆盖</td>
+            <td>{summary.bhavas.length} / 12 Bhava</td>
+          </tr>
+          <tr>
+            <td>Nakshatra Coverage｜宿之覆盖</td>
+            <td>{Object.values(summary.relationships.grahasByNakshatra).flat().length} / 9 Navagraha placed</td>
+          </tr>
+          <tr>
+            <td>Dignity/Condition Coverage｜尊贵与状态覆盖</td>
+            <td>{Object.keys(summary.lordship.planets).length} / 7 classical Grahas (Rahu/Ketu: position + retrograde only, no dignity/ownership fabricated)</td>
+          </tr>
+          <tr>
+            <td>Lordship/Dispositor Coverage｜宫主与守护星覆盖</td>
+            <td>{Object.keys(summary.lordship.planets).length} / 7 classical Grahas — {summary.lordship.dispositorNetwork.loops.length} dispositor loop(s) found</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h4>Unresolved / Deferred Technical Modules｜未实现或延后的技术模块</h4>
+      <p className="reception-note">
+        Generated live from current implementation metadata — never a hard-coded list｜由当前实现状态实时生成 — 非固定列表
+      </p>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Module｜模块</th>
+            <th>Status｜状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summary.unresolvedConventions.map((u) => (
+            <tr key={u.metaKey}>
+              <td>{UNRESOLVED_TOPIC_LABEL[u.topic] ?? u.topic}</td>
+              <td className="not-implemented">{u.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+
+      <h4>Provenance / Source Phases｜数据来源阶段</h4>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Source Phase｜来源阶段</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summary.meta.sourcePhases.map((p) => (
+            <tr key={p}>
+              <td>{PHASE_LABEL[p] ?? p}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+
+      <h4>Per-Graha Evidence Cards｜逐行星证据卡片</h4>
+      {grahaKeys.map((key) => {
+        const ge = summary.grahas[key];
+        return (
+          <details className="planet-detail" key={key}>
+            <summary>
+              {grahaLabel(key)} — {RASHI_LABEL[ge.position.rashi] ?? ge.position.rashi}, Bhava {ge.bhava.number}
+            </summary>
+            <table className="detail-table">
+              <tbody>
+                <tr>
+                  <td>Nakshatra｜宿</td>
+                  <td>
+                    {ge.nakshatra.name} — Lord: {grahaDisplayLabel(ge.nakshatra.lord)}, Pada {ge.nakshatra.pada}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Dignity｜尊贵</td>
+                  <td>{ge.dignity.applicable ? categoricalDignityLabels(ge.dignity) : "Not applicable｜不适用"}</td>
+                </tr>
+                <tr>
+                  <td>Ownership｜宫位归属</td>
+                  <td>{ge.ownership.applicable ? (ge.ownership.ownedBhavas.length > 0 ? ge.ownership.ownedBhavas.join(", ") : "—") : "Not applicable｜不适用"}</td>
+                </tr>
+                <tr>
+                  <td>Immediate Dispositor｜直接守护星</td>
+                  <td>
+                    {grahaDisplayLabel(ge.dispositor.immediate)}
+                    {ge.dispositor.isSelfDispositor ? " (Self｜自己)" : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Flags｜标记</td>
+                  <td>{ge.flags.length > 0 ? ge.flags.join(", ") : "—"}</td>
+                </tr>
               </tbody>
             </table>
           </details>

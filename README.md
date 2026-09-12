@@ -2547,6 +2547,200 @@ source checked) — the only genuinely disputed doctrines encountered
 by deferral rather than a silent pick, per the phase brief's own STOP
 conditions.
 
+## 24. Phase 4F: Vedic Technical Summary & Evidence Layer
+
+**Scope**: this phase is a pure aggregation/normalization layer over the
+already-locked Phase 4A–4E data. It answers "what technical Vedic
+evidence already exists for this Graha, Bhava, lordship relationship, and
+chart?" — never "what does this mean?" It performs **zero** new
+astronomical calculation, recomputes **no** sidereal position, Bhava,
+Nakshatra, dignity, combustion, or dispositor chain, and creates **no**
+new Jyotish doctrine. Every field in `chart.vedic.summary` is read (and,
+where noted, regrouped for traceability) directly from `chart.vedic.grahas`
+(Phase 4A), `chart.vedic.bhava` (Phase 4B), `chart.vedic.nakshatra`
+(Phase 4C), `chart.vedic.condition` (Phase 4D), and `chart.vedic.lordship`
+(Phase 4E).
+
+**Architecture**: `chart.vedic.summary` (`src/astrology/vedic/summary.js`)
+takes the already-built Phase 4A–4E objects as read-only input and
+returns a `structuredClone()` of its aggregated result — a deep copy, so
+mutating `chart.vedic.summary` afterward can never corrupt any locked
+Phase 4A–4E source structure (see "Mutation isolation" below). Top-level
+shape:
+
+```
+chart.vedic.summary = {
+  meta,                 // Part B
+  chartOverview,        // Part C
+  grahas,               // Part D/E - 9 records, keyed by Graha
+  bhavas,               // Part F - 12 records, array
+  lagnaLordNetwork,      // Part G
+  lordship: {            // Part H/I
+    planets,             // 7 classical records, keyed by Graha
+    dispositorNetwork,
+  },
+  relationships,          // Part J - factual indexes
+  unresolvedConventions,  // Part L - generated live, never hard-coded
+  provenance,             // Part M
+}
+```
+
+**Chart overview** (Part C): sidereal foundation facts (`zodiacType`,
+`ayanamsha`, `ayanamshaImplementation`, `ayanamshaIncludesNutation`,
+`vedicNodeType`), the Lagna's Rashi/degree/Nakshatra/Pada/Nakshatra
+Lord/Lagna Lord, and the active `bhavaSystem`/`houseLordshipSystem`/
+`nakshatraSystem`/`vedicDignitySystem`/`dispositorSystem` conventions —
+no interpretive label.
+
+**Graha evidence** (Parts D/E): exactly 9 records (`sun`...`saturn`,
+`rahu`, `ketu`), each with `identity`, `position` (Phase 4A), `bhava`
+(Phase 4B), `nakshatra` (Phase 4C), `dignity`/`condition` (Phase 4D,
+classical only), `ownership` (Phase 4E, classical only), `dispositor`
+(Phase 4E), a factual `flags` array, and a per-concept `provenance` map.
+Every one of Phase 4D's six independent dignity booleans (`isOwnSign`,
+`isExaltedSign`, `isDebilitatedSign`, `isMoolatrikona`,
+`isExactExaltationPoint`, `isExactDebilitationPoint`) is preserved
+verbatim alongside `dignityLabels` and `rashiDignityStatus` — never
+collapsed to the convenience status alone (Part E). Rahu/Ketu carry only
+what Phase 4A–4E actually computed for them: `dignity.applicable: false`
+and `ownership.applicable: false`, never a fabricated own-sign,
+exaltation, or house-ownership value; their `dispositor.chain` is
+explicitly `null` (`chainApplicable: false`), since Phase 4E's multi-step
+dispositor chain is built only for the seven classical Grahas.
+
+**Bhava evidence** (Part F): exactly 12 records, built primarily from
+Phase 4E's own `houseLordMatrix` (already combining Phase 4B's placement
+facts with Phase 4D's dignity/retrograde/combustion evidence for that
+Bhava's lord), plus Phase 4B's own `houses` for occupant Grahas and Phase
+4E's own `houseGroups` for Kendra/Trikona/Dusthana/Upachaya membership —
+e.g. Bhava 10 → Taurus → Lord Venus → Venus in Bhava 3 → Moolatrikona,
+retrograde → Kendra = true, Upachaya = true, nothing more.
+
+**Lagna Lord evidence** (Part G): extends Phase 4E's own
+`lagnaLordNetwork` with the lord's Phase 4D dignity (`dignityLabels`,
+`rashiDignityStatus`) and Phase 4C Nakshatra/Pada — a plain aggregation,
+never an interpretation of that condition.
+
+**Lordship evidence** (Part H): for the seven classical Grahas,
+`lordship.planets[key]` combines owned houses (with Kendra/Trikona/
+Dusthana/Upachaya breakdowns and the neutral `ownsKendraAndTrikona`
+evidence flag), current Bhava/Rashi, dignity labels, retrograde/
+combustion, and dispositor — reusing Phase 4E's `planetaryLordshipRoles`
+and Phase 4D's condition data verbatim. Functional benefic/malefic,
+Yogakaraka, Maraka, and Badhaka are never derived here, exactly as Phase
+4E itself never derived them.
+
+**Dispositor network summary** (Part I): `lordship.dispositorNetwork`
+normalizes all 9 immediate dispositors, all 7 classical dispositor
+chains, all final dispositors, and every distinct loop's canonical
+membership (`canonicalMembers`). Phase 4E's public output canonicalizes a
+loop's membership by alphabetically sorting display names for
+deduplication — the actual DIRECTIONAL cycle order that produced a loop
+is not preserved in Phase 4E's returned structure. Rather than
+reconstructing that order here (which would mean this aggregation layer
+quietly re-deriving a fact Phase 4E itself does not expose), this module
+reports `orderedPath: null` explicitly, recorded as its own
+`"not_implemented"` marker (`dispositorLoopOrderedPath`) so the
+limitation surfaces automatically in `unresolvedConventions` rather than
+being silently absent. The locked verification chart has zero loops, so
+this limitation is not exercised by real chart data today — only by the
+module's own synthetic loop tests.
+
+**Relationship indexes** (Part J) — factual groupings only, never a
+semantic index (no `careerPlanets`/`marriagePlanets`):
+`grahasByBhava` (all 12 Bhava numbers as keys), `grahasByRashi` (all 12
+Rashi names as keys), `grahasByNakshatra` (all 27 Nakshatra names as
+keys), `bhavasByLord` (the 7 classical Graha display names as keys,
+values = owned Bhava numbers). Every index is dense (all keys present,
+even with an empty array) and the union of every bucket in
+`grahasByBhava`/`grahasByRashi`/`grahasByNakshatra` covers each of the 9
+Grahas exactly once.
+
+**Factual flags** (Part K): generated only from already-computed
+evidence — `retrograde`, `combust`, `own_sign`, `exalted_sign`,
+`debilitated_sign`, `moolatrikona`, `exact_exaltation_point`,
+`exact_debilitation_point`, `self_dispositor`, `dispositor_loop_member`.
+No interpretive flag (`strong`/`weak`/`auspicious`/`career_positive`/etc.)
+is ever generated.
+
+**Unresolved conventions** (Part L): generated by scanning the LIVE
+`chart.vedic.meta` (plus this module's own `dispositorLoopOrderedPath`
+marker) for the literal deferral marker strings this project already
+uses (`"not_implemented"`, and the generic `"not_yet_implemented"`/
+`"deferred"` for future-proofing) — **never a hard-coded topic list**. A
+topic's snake_case label is derived mechanically from its camelCase meta
+key (e.g. `functionalBenefic` → `functional_benefic`), so a future
+phase's newly-deferred field appears automatically, and a topic a future
+phase resolves disappears automatically the moment its meta value stops
+being one of those markers. `"none"` (used for the interpretation-related
+fields, e.g. `vedicInterpretation: "none"`) is deliberately **not**
+treated as an unresolved marker — it records a permanent, by-design
+architectural decision (this project never interprets), not a deferred/
+unbuilt feature. For the locked verification chart, 13 topics are
+currently listed: Bhava Chalit, (general) Functional Lordship, Dasha,
+Navamsa (from Pada), Temporary Friendship, Compound Friendship, Shadbala,
+Functional Benefic, Functional Malefic, Yogakaraka, Maraka, Badhaka, and
+Dispositor Loop Ordered Path.
+
+**Provenance** (Part M): every Graha evidence record carries a
+per-concept provenance map (`position → phase_4a`, `bhava → phase_4b`,
+`nakshatra → phase_4c`, `dignity`/`condition → phase_4d`,
+`ownership`/`dispositor → phase_4e`), and the top-level
+`summary.provenance` names all 5 source phases with a one-line
+description each — Phase 4F never claims to be the source of a fact it
+only aggregates.
+
+**Internal reconciliation** (Part R): rather than a second external
+astrology source (unnecessary, since this phase computes no new
+doctrine), every summary field was verified to equal its locked source
+field by dedicated test — Sun/Moon/Rahu/Ketu position against Phase 4A,
+every Graha's Bhava against Phase 4B, every Graha's Nakshatra/Pada
+against Phase 4C, every classical Graha's dignity/combustion/retrograde
+against Phase 4D, every dispositor/chain/final-dispositor/loop against
+Phase 4E, and every Bhava's Rashi/lord/lord-placement/house-group against
+the combination of Phase 4B/4D/4E.
+
+**Mutation isolation** (Part S): `buildVedicTechnicalSummary()` returns
+`structuredClone(summary)` rather than manually tracking every nested
+array/object reference — a single, robust guarantee that mutating
+`chart.vedic.summary` (pushing into an array, reassigning a nested field)
+can never reach back into and corrupt any locked Phase 4A/4B/4C/4D/4E
+source structure. Confirmed by 5 dedicated tests, one per source phase.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus): `chartOverview.lagna` = Leo, Lord Sun, Nakshatra
+Magha Pada 4; 9/9 Graha evidence records; 12/12 Bhava evidence records;
+7/7 classical lordship evidence records; `lagnaLordNetwork.finalDispositor`
+= Venus; `lordship.dispositorNetwork.loops` = `[]` (zero loops, matching
+Phase 4E's own locked report); `grahasByBhava`/`grahasByRashi`/
+`grahasByNakshatra` each account for all 9 Grahas exactly once with no
+duplicates; `bhavasByLord` accounts for all 12 Bhavas exactly once across
+the 7 classical Graha keys.
+
+**UI**: a new "Technical Summary｜技术摘要" subsection was added at the
+end of the existing Vedic Astrology｜印度占星 section — a compact coverage
+overview (Lagna, Graha/Bhava/Nakshatra/Dignity/Lordship coverage counts),
+a live-generated Unresolved/Deferred Technical Modules table, a
+Provenance/Source Phases table, and expandable per-Graha evidence cards
+(`<details>`, matching the existing Graha Detail pattern) — deliberately
+NOT duplicating any of the giant tables already shown in the Phase
+4A–4E subsections above it, and with no interpretation. Verified
+in-browser at desktop (1100px) and mobile (390px) width: no console
+errors, no horizontal page overflow.
+
+New `chart.vedic.meta` fields: `technicalSummaryVersion: "phase_4f_v1"`,
+`technicalSummaryType: "normalized_evidence_layer"`,
+`technicalSummaryInterpretation: "none"`,
+`technicalSummarySourcePhases: ["phase_4a","phase_4b","phase_4c","phase_4d","phase_4e"]`
+(the same four values, without the "Summary" infix on the last one, are
+also nested at `chart.vedic.summary.meta.sourcePhases`).
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (Playwright was again a temporary devDependency for
+the in-browser UI check only, fully uninstalled afterward). All 652
+tests pass (575 carried over from Phase 1–4E unchanged, plus 77 new
+Phase 4F tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

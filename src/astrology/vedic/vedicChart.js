@@ -108,6 +108,13 @@ import {
   BADHAKA_STATUS,
   VEDIC_LORDSHIP_INTERPRETATION,
 } from "./lordship.js";
+import {
+  buildVedicTechnicalSummary,
+  TECHNICAL_SUMMARY_VERSION,
+  TECHNICAL_SUMMARY_TYPE,
+  TECHNICAL_SUMMARY_INTERPRETATION,
+  SOURCE_PHASES,
+} from "./summary.js";
 
 export { NAVAGRAHA_ORDER };
 
@@ -347,7 +354,16 @@ export function buildVedicChart({ chart, astroTime }) {
     maraka: MARAKA_STATUS,
     badhaka: BADHAKA_STATUS,
     vedicLordshipInterpretation: VEDIC_LORDSHIP_INTERPRETATION,
+    technicalSummaryVersion: TECHNICAL_SUMMARY_VERSION,
+    technicalSummaryType: TECHNICAL_SUMMARY_TYPE,
+    technicalSummaryInterpretation: TECHNICAL_SUMMARY_INTERPRETATION,
+    technicalSummarySourcePhases: [...SOURCE_PHASES],
   };
 
-  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship };
+  // Phase 4F: pure aggregation/normalization layer over Phase 4A-4E - no
+  // new astronomical calculation, no new astrology rule, no mutation of
+  // `lagna`/`grahas`/`bhava`/`nakshatra`/`condition`/`lordship`.
+  const summary = buildVedicTechnicalSummary({ meta, lagna, grahas, bhava, nakshatra, condition, lordship });
+
+  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition, lordship, summary };
 }
