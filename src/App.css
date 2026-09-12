@@ -191,6 +191,12 @@ th {
   padding-top: 8px;
 }
 
+.vedic-astrology {
+  margin-top: 40px;
+  border-top: 3px double #333;
+  padding-top: 8px;
+}
+
 .classical-settings {
   max-width: 420px;
   margin-bottom: 16px;

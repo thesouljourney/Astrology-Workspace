@@ -1445,6 +1445,155 @@ dev-only, immediately-uninstalled Playwright UI check follows the same
 established pattern as every prior phase). All 354 tests pass (319
 carried over from Phase 1–3G-B unchanged, plus 35 new Phase 3H tests).
 
+## 19. Phase 4A: Vedic Sidereal Foundation & Navagraha
+
+**Scope**: this phase establishes only the astronomical foundation for
+Vedic (Jyotish) astrology — sidereal conversion, the Lahiri ayanamsha,
+the nine Navagraha (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn,
+Rahu, Ketu), Rashi placement, and a sidereal Ascendant/Lagna
+*foundation* value. It deliberately does **not** implement Bhava/houses,
+Nakshatra, dignity, lordship, yogas, dasha, or any interpretation —
+`chart.vedic.meta` marks each of those explicitly as
+`"not_yet_implemented"` or `"none"`, never silently omitted.
+
+**Architecture — zero new planetary ephemeris**: `chart.vedic` is built
+entirely from data this project already computed and verified. The
+seven real Grahas reuse Phase 1's tropical longitudes/speeds
+(`planets.js`) verbatim; Rahu reuses Phase 2's already-locked
+`computeMeanNode` (`nodes.js`) verbatim; Ketu is never computed
+independently — it is always exactly Rahu's tropical longitude + 180°
+(`computeSouthNode`), matching this project's existing rule for the
+Western North/South Node. Sidereal longitude is
+`normalize360(tropicalLongitude - ayanamshaDegrees)`, using the tropical
+longitude exactly as it already exists — no second ephemeris, no
+alteration of any upstream value.
+
+**Lahiri ayanamsha** (`src/astrology/vedic/ayanamsha.js`): implemented
+as a genuine function of time — `ayanamsha(t) = ` a reference value at
+J2000.0 `+` the IAU 2000/2006 general precession in ecliptic longitude
+accumulated since J2000.0 (Capitaine, Wallace & Chapront 2003), never a
+hard-coded constant. Cross-checked against two sources (Part A): (A) the
+historical N.C. Lahiri / Indian Calendar Reform Committee (1956)
+Chitrapaksha definition (anchor: tropical/sidereal coincidence ≈285 CE,
+official 1956 decree value 23°15′00″), and (B) a **temporary dev-only**
+Swiss Ephemeris cross-check (`sweph-wasm`, installed only long enough to
+measure `SE_SIDM_LAHIRI` at six dates spanning 1900–2024, then
+immediately uninstalled — never a production dependency). This module's
+single calibrated constant reproduces Swiss Ephemeris's Lahiri to within
+**0.0003 arcseconds** at every one of those six dates, including this
+project's own locked verification date — far tighter than the
+"arcminute or larger" threshold that would have required stopping to
+report a material disagreement. No such disagreement was found.
+
+A genuine, disclosed subtlety was found and documented rather than
+hidden: Swiss Ephemeris's own internal sidereal pipeline subtracts this
+same (nutation-free, "mean") ayanamsha from a nutation-*free* tropical
+longitude, whereas this project's tropical longitude (like most modern
+ephemeris output) is the *apparent* position, i.e. it includes nutation.
+Subtracting a nutation-free ayanamsha from a nutation-including tropical
+longitude leaves a small residual exactly equal to the nutation in
+longitude itself (confirmed directly: astronomy-engine's own
+`e_tilt().dpsi` at the verification instant is +10.88″, matching the
+measured ≈10.8″ gap between this module's sidereal Sun and Swiss
+Ephemeris's `SEFLG_SIDEREAL` output almost exactly). This is a real,
+well-understood, honestly-disclosed *convention* difference (mean vs.
+apparent equinox handling in the subtraction) — not a planetary-
+ephemeris error and not an ayanamsha-value error — and it is exactly why
+the simple, always-reconciling formula above is used with no hidden
+correction: every Graha's `tropicalLongitude - ayanamshaDegrees` equals
+its own `siderealLongitude` exactly, by construction and by dedicated
+test.
+
+**Rahu/Ketu node convention** (Part E): research found most traditional
+Jyotish texts/software assume the **mean** node (a smooth, steadily
+regressing point whose motion is, by construction, always retrograde —
+so the real calculated motion and the classical "always retrograde"
+(nitya vakri) doctrine naturally coincide, with nothing to paper over),
+while the True Node (this project's own Modern Western default, for its
+own distinct purpose) oscillates ±1.29° and can briefly compute as
+"direct," conflicting with that doctrine. This was reported to the
+project owner, who chose **mean node** as the Vedic default. Stored
+explicitly and never hidden: `chart.vedic.meta.vedicNodeType: "mean"`,
+plus `nodeType: "mean"` directly on the Rahu/Ketu Graha records
+themselves.
+
+**Motion** (Part K): sidereal speed is *not* assumed equal to tropical
+speed — ayanamsha itself changes at ≈0.0139°/day, a non-negligible
+fraction of a slow planet's own motion near a station. Sidereal speed is
+computed via the exact same symmetric finite-difference technique
+`planets.js` already uses for tropical speed (same 30-minute half-
+window, same wraparound handling) — applied to the sidereal longitude
+function instead, not a new numerical method. `retrograde` is derived
+from this sidereal speed, the technically correct choice for a sidereal
+chart. This is purely technical motion data — no Vedic retrograde
+interpretation is implied.
+
+**Sidereal Lagna**: `chart.vedic.lagna` is explicitly labeled "Sidereal
+Ascendant / Lagna foundation — NOT a Bhava/house-1 placement engine."
+Only a longitude/Rashi/degree value is provided; no house or Bhava field
+exists anywhere on it. MC/IC/DSC are not imported into the Vedic core at
+all in this phase.
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus), computed from the rules, nothing pre-assumed:
+
+Lahiri ayanamsha at the birth instant: **23°47′08.4″ (23.785661°)**.
+
+| Graha | Rashi | Degree | Sidereal Longitude | Tropical Longitude | Motion |
+|---|---|---|---|---|---|
+| Lagna | Leo | 13°13′38.9″ | 133.2275° | 157.0131° | — |
+| Sun | Scorpio | 04°23′23.5″ | 214.3899° | 238.1755° | Direct |
+| Moon | Gemini | 00°55′44.0″ | 60.9289° | 84.7146° | Direct |
+| Mars | Cancer | 29°17′37.9″ | 119.2939° | 143.0795° | Direct |
+| Mercury | Libra | 21°21′41.6″ | 201.3615° | 225.1472° | Direct |
+| Jupiter | Scorpio | 02°05′49.1″ | 212.0970° | 235.8826° | Direct |
+| Venus | Libra | 08°52′33.4″ | 188.8760° | 212.6616° | Retrograde |
+| Saturn | Aquarius | 12°00′21.2″ | 312.0059° | 335.7915° | Direct |
+| Rahu | Libra | 20°09′49.8″ | 200.1638° | 223.9495° | Retrograde |
+| Ketu | Aries | 20°09′49.8″ | 20.1638° | 43.9495° | Retrograde |
+
+Ketu's sidereal and tropical longitudes are each exactly 180° from
+Rahu's, confirmed to floating-point precision.
+
+**Independent verification** (Part P): the same temporary, dev-only
+Swiss Ephemeris cross-check used for the ayanamsha was also used to
+compare astronomy-engine's own tropical planetary/lunar-node longitudes
+against Swiss Ephemeris's SWIEPH output at this verification instant.
+Differences, categorized per Part Q:
+
+| Body | Difference vs. Swiss Ephemeris | Category |
+|---|---|---|
+| Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn | 0.2″–3.8″ | planetary-ephemeris difference (pre-existing, Phase 1, already well within tolerance) |
+| Mean Node (Rahu) | ≈10.8″ | lunar-node-ephemeris difference (pre-existing, Phase 2's own documented Meeus low-precision series characteristic — not new to this phase) |
+| Tropical Ascendant (Lagna) | ≈7.6″ | pre-existing Phase 1 house/Ascendant characteristic |
+| Lahiri ayanamsha value itself | <0.0003″ | ayanamsha-implementation difference — effectively exact |
+| Full sidereal longitude vs. Swiss Ephemeris's `SEFLG_SIDEREAL` | ≈11″ (Sun; comparable for other bodies) | convention difference (mean vs. apparent-equinox subtraction — see ayanamsha.js doc comment) — **not** a planetary or ayanamsha-value error |
+
+Every difference is comfortably under one arcminute; none required
+stopping under Part A/Q's "arcminute or larger" threshold.
+
+**Regression**: Modern Western, Classical, and Phase 3H summary outputs
+are confirmed byte-for-byte unchanged by dedicated tests — `chart.vedic`
+is purely additive.
+
+UI: a new "Vedic Astrology｜印度占星" top-level section (Sidereal
+Foundation, Lagna, a Navagraha table, and per-Graha detail cards) was
+added, additional to the existing Western/Classical sections — no
+dignity/strength/benefic/malefic language anywhere.
+
+New `chart.vedic.meta` fields: `vedicSystem: "jyotish"`, `zodiacType:
+"sidereal"`, `ayanamsha: "lahiri"`, `ayanamshaImplementation:
+"lahiri_chitrapaksha_mean_iau2006_precession"`, `vedicNodeType: "mean"`,
+`grahaSet: "navagraha"`, `rashiSystem: "12_equal_30_degree_signs"`,
+`bhavaSystem: "not_yet_implemented"`, `nakshatraSystem:
+"not_yet_implemented"`, `vedicInterpretation: "none"`.
+
+Zero new production dependencies, zero network calls (the temporary,
+dev-only Swiss Ephemeris and Playwright UI checks were both fully
+uninstalled immediately after use, per this project's established
+pattern). All 385 tests pass (354 carried over from Phase 1–3H
+unchanged, plus 31 new Phase 4A tests).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

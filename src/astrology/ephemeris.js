@@ -13,6 +13,7 @@ import { computeHouseCusps, getHouseForLongitude, SUPPORTED_HOUSE_SYSTEMS } from
 import { getZodiacSign, normalizeDegrees } from "./zodiac.js";
 import { buildModernWesternPoints } from "./modernWestern.js";
 import { buildClassicalChart } from "./classical/classicalChart.js";
+import { buildVedicChart } from "./vedic/vedicChart.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -135,6 +136,12 @@ export function calculateChart(input) {
   };
 
   chart.classical = buildClassicalChart({ chart, astroTime, latitude, longitude });
+
+  // Phase 4A: Vedic sidereal foundation. Kept structurally separate from
+  // chart.points/chart.classical, deriving sidereal positions from the
+  // already-verified tropical data above - never a second ephemeris, and
+  // never mutating the Modern Western/Classical outputs.
+  chart.vedic = buildVedicChart({ chart, astroTime });
 
   return chart;
 }

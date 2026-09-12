@@ -1,0 +1,203 @@
+const GRAHA_NAMES = {
+  sun: { en: "Sun", cn: "太阳", symbol: "☉" },
+  moon: { en: "Moon", cn: "月亮", symbol: "☽" },
+  mars: { en: "Mars", cn: "火星", symbol: "♂" },
+  mercury: { en: "Mercury", cn: "水星", symbol: "☿" },
+  jupiter: { en: "Jupiter", cn: "木星", symbol: "♃" },
+  venus: { en: "Venus", cn: "金星", symbol: "♀" },
+  saturn: { en: "Saturn", cn: "土星", symbol: "♄" },
+  rahu: { en: "Rahu", cn: "罗睺", symbol: "☊" },
+  ketu: { en: "Ketu", cn: "计都", symbol: "☋" },
+};
+
+const RASHI_LABEL = {
+  Aries: "Aries｜白羊",
+  Taurus: "Taurus｜金牛",
+  Gemini: "Gemini｜双子",
+  Cancer: "Cancer｜巨蟹",
+  Leo: "Leo｜狮子",
+  Virgo: "Virgo｜处女",
+  Libra: "Libra｜天秤",
+  Scorpio: "Scorpio｜天蝎",
+  Sagittarius: "Sagittarius｜射手",
+  Capricorn: "Capricorn｜摩羯",
+  Aquarius: "Aquarius｜水瓶",
+  Pisces: "Pisces｜双鱼",
+};
+
+function grahaLabel(key) {
+  const n = GRAHA_NAMES[key];
+  return n ? `${n.symbol} ${n.en}｜${n.cn}` : key;
+}
+
+export default function VedicAstrology({ chart }) {
+  const { vedic } = chart;
+  if (!vedic) return null;
+
+  const { meta, ayanamsha, lagna, grahas } = vedic;
+  const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
+
+  return (
+    <section className="vedic-astrology">
+      <h2>Vedic Astrology｜印度占星</h2>
+      <p className="reception-note">
+        Sidereal technical positions only — no dignity, house, Nakshatra, or interpretation yet｜仅为恒星黄道技术位置 —
+        尚未涉及尊贵、宫位、二十七宿或解读
+      </p>
+
+      <h3>Sidereal Foundation｜恒星黄道基础</h3>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Zodiac Type｜黄道类型</td>
+            <td>{meta.zodiacType}</td>
+          </tr>
+          <tr>
+            <td>Ayanamsha｜岁差值</td>
+            <td>Lahiri / Chitrapaksha — {ayanamsha.formatted} ({ayanamsha.degrees.toFixed(6)}°)</td>
+          </tr>
+          <tr>
+            <td>Ayanamsha Implementation｜岁差算法</td>
+            <td className="meta-cell">{meta.ayanamshaImplementation}</td>
+          </tr>
+          <tr>
+            <td>Node Type (Rahu/Ketu)｜交点类型</td>
+            <td>{meta.vedicNodeType === "mean" ? "Mean Node｜平均交点" : "True Node｜真实交点"}</td>
+          </tr>
+          <tr>
+            <td>Graha Set｜行星集合</td>
+            <td>{meta.grahaSet}</td>
+          </tr>
+          <tr>
+            <td>Rashi System｜星座系统</td>
+            <td>{meta.rashiSystem}</td>
+          </tr>
+          <tr>
+            <td>Bhava (House) System｜宫位系统</td>
+            <td className="meta-cell">{meta.bhavaSystem}</td>
+          </tr>
+          <tr>
+            <td>Nakshatra System｜二十七宿系统</td>
+            <td className="meta-cell">{meta.nakshatraSystem}</td>
+          </tr>
+          <tr>
+            <td>Interpretation｜解读</td>
+            <td>{meta.vedicInterpretation}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Lagna｜上升点</h3>
+      <p className="reception-note">{lagna.label}｜恒星黄道上升点基础 — 非宫位分配引擎</p>
+      <div className="table-scroll">
+      <table className="detail-table">
+        <tbody>
+          <tr>
+            <td>Rashi｜星座</td>
+            <td>{RASHI_LABEL[lagna.rashi] ?? lagna.rashi}</td>
+          </tr>
+          <tr>
+            <td>Degree｜度数</td>
+            <td>{lagna.degreeFormatted}</td>
+          </tr>
+          <tr>
+            <td>Sidereal Longitude｜恒星经度</td>
+            <td>{lagna.siderealLongitude.toFixed(4)}°</td>
+          </tr>
+          <tr>
+            <td>Tropical Longitude｜回归经度</td>
+            <td>{lagna.tropicalLongitude.toFixed(4)}°</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Navagraha｜九曜</h3>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Rashi｜星座</th>
+            <th>Degree｜度数</th>
+            <th>Sidereal Longitude｜恒星经度</th>
+            <th>Tropical Longitude｜回归经度</th>
+            <th>Motion｜运行</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grahaKeys.map((key) => {
+            const g = grahas[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{RASHI_LABEL[g.rashi] ?? g.rashi}</td>
+                <td>{g.degreeFormatted}</td>
+                <td>{g.siderealLongitude.toFixed(4)}°</td>
+                <td>{g.tropicalLongitude.toFixed(4)}°</td>
+                <td>{g.motion.retrograde ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Graha Detail｜行星详情</h3>
+      {grahaKeys.map((key) => {
+        const g = grahas[key];
+        return (
+          <details className="planet-detail" key={key}>
+            <summary>
+              {grahaLabel(key)} — {RASHI_LABEL[g.rashi] ?? g.rashi} {g.degreeFormatted}
+            </summary>
+            <table className="detail-table">
+              <tbody>
+                <tr>
+                  <td>Tropical Longitude｜回归经度</td>
+                  <td>{g.tropicalLongitude.toFixed(6)}°</td>
+                </tr>
+                <tr>
+                  <td>Ayanamsha (at this instant)｜岁差值</td>
+                  <td>{g.ayanamshaDegrees.toFixed(6)}°</td>
+                </tr>
+                <tr>
+                  <td>Sidereal Longitude｜恒星经度</td>
+                  <td>{g.siderealLongitude.toFixed(6)}°</td>
+                </tr>
+                <tr>
+                  <td>Rashi｜星座</td>
+                  <td>{RASHI_LABEL[g.rashi] ?? g.rashi} (index {g.rashiIndex})</td>
+                </tr>
+                <tr>
+                  <td>Degree Within Rashi｜星座内度数</td>
+                  <td>{g.degreeFormatted}</td>
+                </tr>
+                <tr>
+                  <td>Tropical Speed｜回归速度</td>
+                  <td>{g.motion.tropicalSpeedDegPerDay.toFixed(6)}°/day</td>
+                </tr>
+                <tr>
+                  <td>Sidereal Speed｜恒星速度</td>
+                  <td>{g.motion.siderealSpeedDegPerDay.toFixed(6)}°/day</td>
+                </tr>
+                <tr>
+                  <td>Motion｜运行状态</td>
+                  <td>{g.motion.retrograde ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+                </tr>
+                {g.nodeType && (
+                  <tr>
+                    <td>Node Type｜交点类型</td>
+                    <td>{g.nodeType}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </details>
+        );
+      })}
+    </section>
+  );
+}
