@@ -276,11 +276,20 @@ describe("TEST 21: Phase 3H summary unchanged", () => {
 });
 
 describe("TEST 22: no Vedic interpretation text exists", () => {
-  it("no strong/weak/benefic/malefic/exalted/debilitated/good/bad language anywhere in chart.vedic", () => {
+  it("no strong/weak/benefic/malefic/good/bad language anywhere in chart.vedic, including chart.vedic.condition (Phase 4D)", () => {
     const chart = calculateChart(VERIFICATION_INPUT);
     const json = JSON.stringify(chart.vedic);
-    expect(json).not.toMatch(/\bstrong\b|\bweak\b|benefic|malefic|exalted|debilitat|friendly|enem|\bgood\b|\bbad\b/i);
+    // benefic/malefic/strong/weak/good/bad remain banned everywhere,
+    // including Phase 4D's condition data (Part N/O/P).
+    expect(json).not.toMatch(/\bstrong\b|\bweak\b|benefic|malefic|\bgood\b|\bbad\b/i);
     expect(chart.vedic.meta.vedicInterpretation).toBe("none");
+  });
+
+  it("no exalted/debilitated/friend/enemy language anywhere OUTSIDE Phase 4D's own condition data (those are Phase 4D's own approved technical field names/values, not interpretation - see condition.test.js for its own full test suite)", () => {
+    const chart = calculateChart(VERIFICATION_INPUT);
+    const { condition, ...vedicWithoutCondition } = chart.vedic;
+    const json = JSON.stringify(vedicWithoutCondition);
+    expect(json).not.toMatch(/exalted|debilitat|friendly|enem/i);
   });
 });
 
@@ -298,7 +307,7 @@ describe("TEST 24: output is JSON serializable", () => {
     const json = JSON.stringify(chart.vedic);
     expect(typeof json).toBe("string");
     const parsed = JSON.parse(json);
-    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "grahas", "lagna", "meta", "nakshatra"].sort());
+    expect(Object.keys(parsed).sort()).toEqual(["ayanamsha", "bhava", "condition", "grahas", "lagna", "meta", "nakshatra"].sort());
     expect(Object.keys(parsed.grahas).length).toBe(9);
   });
 

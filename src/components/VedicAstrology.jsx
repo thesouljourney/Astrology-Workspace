@@ -38,19 +38,37 @@ function grahaDisplayLabel(englishName) {
   return key ? grahaLabel(key) : englishName;
 }
 
+const DIGNITY_STATUS_LABEL = {
+  exaltation: "Exaltation｜擢升",
+  moolatrikona: "Moolatrikona",
+  own_sign: "Own Sign｜自己星座",
+  friend_sign: "Friend's Sign｜友宫",
+  neutral_sign: "Neutral Sign｜中立宫",
+  enemy_sign: "Enemy's Sign｜敌宫",
+  debilitation: "Debilitation｜落陷",
+};
+
+const RELATIONSHIP_LABEL = {
+  self: "Self｜自己",
+  friend: "Friend｜友",
+  neutral: "Neutral｜中立",
+  enemy: "Enemy｜敌",
+};
+
 export default function VedicAstrology({ chart }) {
   const { vedic } = chart;
   if (!vedic) return null;
 
-  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra } = vedic;
+  const { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition } = vedic;
   const grahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
+  const classicalGrahaKeys = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"];
 
   return (
     <section className="vedic-astrology">
       <h2>Vedic Astrology｜印度占星</h2>
       <p className="reception-note">
-        Sidereal technical positions only — no dignity, house, Nakshatra, or interpretation yet｜仅为恒星黄道技术位置 —
-        尚未涉及尊贵、宫位、二十七宿或解读
+        Technical sidereal positions, house structure, Nakshatra, and dignity/condition evidence only — no yogas,
+        dasha, or interpretation｜仅为恒星黄道技术位置、宫位结构、二十七宿与尊贵/状态证据 — 尚未涉及瑜伽、大运或解读
       </p>
 
       <h3>Sidereal Foundation｜恒星黄道基础</h3>
@@ -132,6 +150,46 @@ export default function VedicAstrology({ chart }) {
           <tr>
             <td>Nakshatra Interpretation｜宿之解读</td>
             <td>{meta.nakshatraInterpretation}</td>
+          </tr>
+          <tr>
+            <td>Dignity System｜尊贵系统</td>
+            <td className="meta-cell">{meta.vedicDignitySystem}</td>
+          </tr>
+          <tr>
+            <td>Exaltation Convention｜擢升度数依据</td>
+            <td className="meta-cell">{meta.exaltationConvention}</td>
+          </tr>
+          <tr>
+            <td>Moolatrikona Convention｜Moolatrikona 依据</td>
+            <td className="meta-cell">{meta.moolatrikonaConvention}</td>
+          </tr>
+          <tr>
+            <td>Natural Friendship Convention｜自然关系依据</td>
+            <td className="meta-cell">{meta.naturalFriendshipConvention}</td>
+          </tr>
+          <tr>
+            <td>Combustion Convention｜燃烧依据</td>
+            <td className="meta-cell">{meta.combustionConvention}</td>
+          </tr>
+          <tr>
+            <td>Rahu/Ketu Dignity｜罗睺计都尊贵</td>
+            <td className="meta-cell">{meta.rahuKetuDignity}</td>
+          </tr>
+          <tr>
+            <td>Temporary Friendship｜临时关系</td>
+            <td>{meta.temporaryFriendship}</td>
+          </tr>
+          <tr>
+            <td>Compound Friendship｜复合关系</td>
+            <td>{meta.compoundFriendship}</td>
+          </tr>
+          <tr>
+            <td>Shadbala｜六重力</td>
+            <td>{meta.shadbala}</td>
+          </tr>
+          <tr>
+            <td>Condition Interpretation｜状态解读</td>
+            <td>{meta.vedicConditionInterpretation}</td>
           </tr>
         </tbody>
       </table>
@@ -281,6 +339,64 @@ export default function VedicAstrology({ chart }) {
                 <td>{grahaDisplayLabel(n.nakshatraLord)}</td>
                 <td>{n.pada}</td>
                 <td>{n.degreeFormatted}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
+
+      <h3>Planetary Condition｜行星状态</h3>
+      <p className="reception-note">
+        Technical dignity/condition evidence only — own sign, exaltation, Moolatrikona, natural sign relationship,
+        retrograde, and combustion. No functional benefic/malefic, Yogakaraka, Maraka, or Shadbala yet｜仅为尊贵/状态技术证据
+        — 自己星座、擢升、Moolatrikona、自然宫主关系、逆行与燃烧。尚未涉及功能性吉凶、生死主或六重力
+      </p>
+      <div className="table-scroll">
+      <table className="classical-table">
+        <thead>
+          <tr>
+            <th>Graha｜行星</th>
+            <th>Rashi｜星座</th>
+            <th>Dignity｜尊贵</th>
+            <th>Moolatrikona｜Moolatrikona</th>
+            <th>Sign Lord｜宫主</th>
+            <th>Relationship｜关系</th>
+            <th>Retrograde｜逆行</th>
+            <th>Combustion｜燃烧</th>
+          </tr>
+        </thead>
+        <tbody>
+          {classicalGrahaKeys.map((key) => {
+            const p = condition.planets[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{RASHI_LABEL[p.rashi] ?? p.rashi}</td>
+                <td>{DIGNITY_STATUS_LABEL[p.dignity.rashiDignityStatus] ?? p.dignity.rashiDignityStatus}</td>
+                <td>{p.dignity.isMoolatrikona ? "Yes｜是" : "—"}</td>
+                <td>{grahaDisplayLabel(p.signRelationship.signLord)}</td>
+                <td>{RELATIONSHIP_LABEL[p.signRelationship.naturalRelationshipToSignLord] ?? p.signRelationship.naturalRelationshipToSignLord}</td>
+                <td>{p.condition.isRetrograde ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+                <td>
+                  {p.condition.combustion.isCombust
+                    ? `Combust｜燃烧 (${p.condition.combustion.solarElongationDegrees.toFixed(2)}°)`
+                    : "—"}
+                </td>
+              </tr>
+            );
+          })}
+          {["rahu", "ketu"].map((key) => {
+            const n = condition.nodes[key];
+            return (
+              <tr key={key}>
+                <td>{grahaLabel(key)}</td>
+                <td>{RASHI_LABEL[n.rashi] ?? n.rashi}</td>
+                <td colSpan={4} className="not-implemented">
+                  Not assigned — convention varies｜未指定 — 传统流派不一
+                </td>
+                <td>{n.isRetrograde ? "Retrograde｜逆行" : "Direct｜顺行"}</td>
+                <td>—</td>
               </tr>
             );
           })}

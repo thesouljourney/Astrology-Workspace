@@ -1957,6 +1957,223 @@ fully local/offline (the temporary, dev-only Playwright UI check was
 fully uninstalled immediately after use). All 469 tests pass (429
 carried over from Phase 1–4B unchanged, plus 40 new Phase 4C tests).
 
+## 22. Phase 4D: Vedic Dignity & Planetary Condition
+
+**Scope**: for the seven classical Grahas, this phase establishes
+factual, evidence-only dignity and technical condition: own sign,
+exaltation/debilitation (sign and exact degree), Moolatrikona, natural
+(Naisargika) planetary friendship, the Graha's relationship to its
+current sign's lord, retrograde state, and combustion. Rahu/Ketu are
+deliberately given only the fields that ARE well-defined for them
+(Rashi, degree, retrograde) — never an invented own-sign/exaltation/
+Moolatrikona status. This phase does **not** implement temporary or
+compound friendship, Shadbala of any kind, functional benefic/malefic,
+Yogakaraka, Maraka, Badhaka, Avasthas, or any dignity/strength score or
+interpretation — `chart.vedic.meta` marks every one of those explicitly.
+
+**Architecture**: `chart.vedic.condition` (`src/astrology/vedic/dignityTables.js`
++ `condition.js`) is derived entirely from Phase 4A's own locked sidereal
+Graha records plus this phase's researched reference tables — no new
+astronomical calculation, no mutation of `grahas`.
+
+**Research discipline**: before writing any code, every table below was
+cross-checked against at least two independent sources, per the phase
+brief's explicit "Critical Research Rule." Two points of **genuine,
+material disagreement** were found and surfaced to the project owner for
+an explicit decision *before* implementation, rather than silently
+picked:
+
+1. **Moon's Moolatrikona in Taurus**: some sources give 4°–20°; BPHS-
+   critical-edition sources give 4°–30° (filling the rest of the sign
+   after the 3° exaltation point — Moon is the one planet whose
+   Moolatrikona sits inside its own *exaltation* sign). **Decided: 4°–30°.**
+2. **Mercury's Moolatrikona in Virgo**: some sources give 15°–20°
+   (starting exactly at the exaltation degree); BPHS-critical-edition
+   sources give 16°–20° (one degree after it, avoiding overlap with the
+   exact exaltation point). **Decided: 16°–20°.**
+
+A third, much narrower discrepancy (Sun's Moolatrikona starting at 0°
+vs. 1° Leo) appeared in only one low-quality, unjustified citation
+against every other (textually-grounded) source's "0°" — treated as an
+isolated citation error, not a second convention, so 0° was kept without
+stopping. Saturn's exact exaltation degree showed a cross-**tradition**
+difference (20° Libra in every Vedic source vs. 21° in a Western
+tropical source) — not a disagreement within Jyotish, so 20° (the
+Vedic-specific value) was kept without stopping, consistent with this
+phase's Vedic-only scope. Selected convention names:
+`exaltationConvention: "parashari_standard_exact_degrees"`,
+`moolatrikonaConvention: "bphs_critical_edition"`.
+
+**Own signs (Swakshetra)** — uncontested across every source checked:
+
+| Graha | Own Sign(s) |
+|---|---|
+| Sun | Leo |
+| Moon | Cancer |
+| Mars | Aries, Scorpio |
+| Mercury | Gemini, Virgo |
+| Jupiter | Sagittarius, Pisces |
+| Venus | Taurus, Libra |
+| Saturn | Capricorn, Aquarius |
+
+**Exaltation / debilitation** (sign — uncontested; exact degree —
+Parashari standard, confirmed as above):
+
+| Graha | Exaltation | Exact Degree | Debilitation | Exact Degree |
+|---|---|---|---|---|
+| Sun | Aries | 10° | Libra | 10° |
+| Moon | Taurus | 3° | Scorpio | 3° |
+| Mars | Capricorn | 28° | Cancer | 28° |
+| Mercury | Virgo | 15° | Pisces | 15° |
+| Jupiter | Cancer | 5° | Capricorn | 5° |
+| Venus | Pisces | 27° | Virgo | 27° |
+| Saturn | Libra | 20° | Aries | 20° |
+
+The debilitation point is always derived mathematically as exactly 180°
+from the exaltation point (same degree number, opposite sign) — never a
+second, independently-sourced table; confirmed by dedicated test for
+every Graha.
+
+**Moolatrikona** (`bphs_critical_edition`, half-open `[start, end)` —
+matching this project's Phase 4C boundary-policy precedent):
+
+| Graha | Sign | Range |
+|---|---|---|
+| Sun | Leo | 0°–20° |
+| Moon | Taurus | 4°–30° |
+| Mars | Aries | 0°–12° |
+| Mercury | Virgo | 16°–20° |
+| Jupiter | Sagittarius | 0°–10° |
+| Venus | Libra | 0°–15° |
+| Saturn | Aquarius | 0°–20° |
+
+**Dignity overlap / display precedence** (Part F): `isOwnSign`,
+`isExaltedSign`, `isDebilitatedSign`, and `isMoolatrikona` are stored as
+fully independent booleans — several real placements make more than one
+true at once (Mercury anywhere in Virgo is simultaneously own-sign AND
+exaltation-sign; within 16°–20° it is additionally Moolatrikona; Sun
+within Leo 0°–20° is simultaneously own-sign AND Moolatrikona). The
+single summary field `rashiDignityStatus` uses an explicit, documented
+precedence for the four categorical (non-relational) dignities —
+**Exaltation > Moolatrikona > Own Sign > Debilitation** — falling back to
+the relational classification (friend/neutral/enemy sign) only when none
+of those four apply.
+
+**Natural friendship (Naisargika Maitri)** — uncontested across every
+source checked, including its well-known asymmetries (e.g. Mercury
+naturally considers the Sun a friend, but the Sun considers Mercury only
+neutral; Saturn considers Mars an enemy, but Mars considers Saturn only
+neutral):
+
+| Graha | Friends | Neutrals | Enemies |
+|---|---|---|---|
+| Sun | Moon, Mars, Jupiter | Mercury | Venus, Saturn |
+| Moon | Sun, Mercury | Mars, Jupiter, Venus, Saturn | — |
+| Mars | Sun, Moon, Jupiter | Venus, Saturn | Mercury |
+| Mercury | Sun, Venus | Mars, Jupiter, Saturn | Moon |
+| Jupiter | Sun, Moon, Mars | Saturn | Mercury, Venus |
+| Venus | Mercury, Saturn | Mars, Jupiter | Sun, Moon |
+| Saturn | Mercury, Venus | Jupiter | Sun, Moon, Mars |
+
+Used only for natural friendship — temporary (Tatkalika) and compound
+(Panchadha) friendship remain explicitly `"not_implemented"`.
+
+**Sign relationship** (Part H): for each Graha, its current sign's lord
+is looked up (reusing Phase 4B's own `RASHI_LORDS` table verbatim), and
+the Graha's natural relationship to that lord is classified as `"self"`
+(own sign), `"friend"`, `"neutral"`, or `"enemy"` — a plain technical
+fact only (e.g. Moon exalted in Taurus, ruled by Venus, shows
+`naturalRelationshipToSignLord: "neutral"`, since Moon and Venus are
+natural neutrals — dignity and sign-relationship are independent axes,
+not a contradiction).
+
+**Combustion (Asta)** (`bphs_phaladeepika_per_planet_orb`) — a per-planet
+orb table, confirmed consistent across sources citing Brihat Parashara
+Hora Shastra and Mantreswara's Phaladeepika, and confirmed structurally
+**different** from this project's own separate Western Classical Phase
+3B combustion threshold (a single flat 8.5° orb for every planet — see
+`solarCondition.js` — never reused here, per the phase brief's explicit
+warning):
+
+| Graha | Direct | Retrograde |
+|---|---|---|
+| Moon | 12° | — (never retrograde) |
+| Mars | 17° | (same — no separate retrograde value) |
+| Mercury | 14° | 12° |
+| Jupiter | 11° | (same — no separate retrograde value) |
+| Venus | 10° | 8° |
+| Saturn | 15° | (same — no separate retrograde value) |
+
+A follow-up check specifically confirmed only Mercury and Venus (the two
+planets that can appear retrograde while near the Sun) carry a distinct
+retrograde threshold in these sources. The Sun itself has no combustion
+threshold (a body cannot be combust by its own light).
+
+**Retrograde**: `isRetrograde` is reused verbatim from Phase 4A's own
+sidereal-speed-based `motion.retrograde` field — never recomputed here,
+confirmed by dedicated identity test (Part K/Test 17).
+
+**Verification chart** (1994-11-21, 01:44:00 +08:00, 1.8548°N
+102.9325°E, Placidus):
+
+| Graha | Rashi | Deg. in Rashi | Dignity | Moolatrikona | Sign Lord | Relationship | Retrograde | Combustion |
+|---|---|---|---|---|---|---|---|---|
+| Sun | Scorpio | 04°23′23.5″ | Friend's Sign | No | Mars | Friend | Direct | — |
+| Moon | Gemini | 00°55′44.0″ | Friend's Sign | No | Mercury | Friend | Direct | — |
+| Mars | Cancer | 29°17′37.9″ | Debilitation | No | Moon | Friend | Direct | — |
+| Mercury | Libra | 21°21′41.6″ | Friend's Sign | No | Venus | Friend | Direct | Combust (13.03°) |
+| Jupiter | Scorpio | 02°05′49.1″ | Friend's Sign | No | Mars | Friend | Direct | Combust (2.29°) |
+| Venus | Libra | 08°52′33.4″ | Moolatrikona | Yes | Venus | Self | Retrograde | — |
+| Saturn | Aquarius | 12°00′21.2″ | Moolatrikona | Yes | Saturn | Self | Direct | — |
+
+Rahu (Libra, 20°09′49.8″) and Ketu (Aries, 20°09′49.8″) each show
+`dignityConvention: "not_assigned_due_to_traditional_variance"` and
+their own retrograde state (both retrograde, per Phase 4A's mean-node
+convention) — no own-sign/exaltation/Moolatrikona status is invented for
+either.
+
+**Independent verification**: every table above was cross-checked
+against at least two sources before adoption (own-sign, exaltation/
+debilitation signs, natural friendship: uncontested; exact exaltation
+degrees: uncontested except one cross-tradition Saturn note; Moolatrikona
+and combustion: explicitly researched and, where materially contested,
+resolved by approval rather than silently). `dignityTables.js`'s module
+doc comment carries the full source-comparison trail. Dedicated tests
+independently recompute the debilitation-is-180°-from-exaltation
+property, the Moolatrikona/combustion boundaries at every one of the 7
+planets' thresholds, and the natural-friendship table's completeness
+(every Graha classifies the other six exactly once, symmetric or not).
+
+**Regression**: Phase 4A's own `grahas`/`lagna`/`ayanamsha`, Phase 4B's
+`bhava`, Phase 4C's `nakshatra`, and Modern Western/Classical/Phase 3H
+outputs are confirmed byte-for-byte unchanged by dedicated tests.
+
+UI: a new "Planetary Condition｜行星状态" subsection was added inside the
+existing Vedic Astrology｜印度占星 section (Graha / Rashi / Dignity /
+Moolatrikona / Sign Lord / Relationship / Retrograde / Combustion table;
+Rahu/Ketu show "Not assigned — convention varies" rather than an invented
+status) — additive only, existing Phase 4A/4B/4C subsections untouched.
+Verified in-browser at desktop and 390px mobile width: no console
+errors, no horizontal page overflow.
+
+New `chart.vedic.meta` fields: `vedicDignitySystem: "parashari_baseline"`,
+`exaltationConvention: "parashari_standard_exact_degrees"`,
+`moolatrikonaConvention: "bphs_critical_edition"`,
+`naturalFriendshipConvention: "naisargika_maitri_bphs"`,
+`combustionConvention: "bphs_phaladeepika_per_planet_orb"`,
+`rahuKetuDignity: "not_assigned_due_to_traditional_variance"`,
+`temporaryFriendship: "not_implemented"`, `compoundFriendship:
+"not_implemented"`, `shadbala: "not_implemented"`,
+`vedicConditionInterpretation: "none"`.
+
+Zero new production dependencies, zero network calls, runtime remains
+fully local/offline (Playwright was again a temporary devDependency for
+the in-browser UI check only, fully uninstalled afterward). All 521
+tests pass (469 carried over from Phase 1–4C unchanged, plus 51 new
+Phase 4D tests, one existing Phase 4A test split into two to separate
+the still-banned interpretive vocabulary from Phase 4D's own newly-
+approved technical terms).
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

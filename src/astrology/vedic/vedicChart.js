@@ -78,6 +78,21 @@ import {
   NAVAMSA_FROM_PADA_STATUS,
   NAKSHATRA_INTERPRETATION,
 } from "./nakshatra.js";
+import {
+  buildVedicCondition,
+  TEMPORARY_FRIENDSHIP_STATUS,
+  COMPOUND_FRIENDSHIP_STATUS,
+  SHADBALA_STATUS,
+  VEDIC_CONDITION_INTERPRETATION,
+} from "./condition.js";
+import {
+  DIGNITY_SYSTEM,
+  EXALTATION_CONVENTION,
+  MOOLATRIKONA_CONVENTION,
+  NATURAL_FRIENDSHIP_CONVENTION,
+  COMBUSTION_CONVENTION,
+  RAHU_KETU_DIGNITY_STATUS,
+} from "./dignityTables.js";
 
 export { NAVAGRAHA_ORDER };
 
@@ -259,6 +274,12 @@ export function buildVedicChart({ chart, astroTime }) {
   // mutating Phase 4A's own `lagna`/`grahas` objects.
   const nakshatra = buildVedicNakshatra({ lagna, grahas });
 
+  // Phase 4D: dignity/technical-condition evaluation, derived purely
+  // from the same already-locked sidereal Graha records above plus the
+  // researched Parashari reference tables (dignityTables.js) - no new
+  // astronomical calculation, no mutation of `grahas`.
+  const condition = buildVedicCondition({ grahas });
+
   const meta = {
     vedicSystem: "jyotish",
     zodiacType: "sidereal",
@@ -283,7 +304,17 @@ export function buildVedicChart({ chart, astroTime }) {
     vedicInterpretation: "none",
     vedicHouseInterpretation: VEDIC_HOUSE_INTERPRETATION,
     nakshatraInterpretation: NAKSHATRA_INTERPRETATION,
+    vedicDignitySystem: DIGNITY_SYSTEM,
+    exaltationConvention: EXALTATION_CONVENTION,
+    moolatrikonaConvention: MOOLATRIKONA_CONVENTION,
+    naturalFriendshipConvention: NATURAL_FRIENDSHIP_CONVENTION,
+    combustionConvention: COMBUSTION_CONVENTION,
+    rahuKetuDignity: RAHU_KETU_DIGNITY_STATUS,
+    temporaryFriendship: TEMPORARY_FRIENDSHIP_STATUS,
+    compoundFriendship: COMPOUND_FRIENDSHIP_STATUS,
+    shadbala: SHADBALA_STATUS,
+    vedicConditionInterpretation: VEDIC_CONDITION_INTERPRETATION,
   };
 
-  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra };
+  return { meta, ayanamsha, lagna, grahas, bhava, nakshatra, condition };
 }
