@@ -3139,6 +3139,166 @@ full-regression checks). All 726 tests pass (712 prior + 14 new). Phase
 
 ---
 
+## 26. Phase 6: Topic Retrieval Framework
+
+**Scope**: this phase does NOT interpret astrology, and it does NOT
+calculate any new astrology. It builds a retrieval layer,
+`chart.topicRetrieval`, that answers a narrower question than Phase 5:
+given a real-world topic ("Career", "Relationship", "Parents"...), which
+already-computed Modern Western, Classical, and Vedic technical facts
+are relevant to it, and where do they live? The pipeline is:
+
+```
+Topic → system-specific evidence recipe → resolve EXISTING evidence → technical evidence bundle → manual interpretation by the user
+```
+
+Phase 6 never generates interpretations, predictions, advice,
+personality descriptions, good/bad judgments, or synthesized
+conclusions. It never merges Modern Western, Classical, and Vedic into
+one voice, and it never scores or ranks how well the three systems
+"agree." Every value inside a `chart.topicRetrieval` evidence item is
+either a value already computed by Phase 1/2A (`chart.points`,
+`chart.angles`, `chart.houseCusps`), Phase 3A–3H
+(`chart.classical.summary.planets[key]`), or Phase 4A–4F
+(`chart.vedic.summary.grahas[key]` / `.bhavas[i]` /
+`.lordship.planets[key]`) — or, where the underlying calculation does
+not exist in this project, an explicit `future_required` marker with a
+neutral, non-interpretive reason. Nothing missing is silently
+implemented "on the side" to complete a recipe.
+
+**Architecture**: `chart.topicRetrieval` (`src/astrology/topicRetrieval/`)
+is built by `buildTopicRetrieval({ chart })` from a fully-built chart
+(with `chart.classical`/`chart.vedic`/`chart.crossSystem` already
+attached) and returns a `structuredClone()` of its own result, matching
+the mutation-isolation pattern already established by Phase 4F/5:
+
+```
+chart.topicRetrieval = {
+  meta: {
+    topicRetrievalVersion: "phase_6_v1",
+    topicRetrievalType: "topic_based_technical_evidence_retrieval",
+    topicRetrievalInterpretation: "none",
+    crossSystemSynthesis: "none",
+    scoring: "none",
+    topicIds: [...],
+  },
+  topics: [ /* 8 resolved Topic bundles */ ],
+}
+```
+
+Each Topic bundle carries `id`, bilingual `label`/`definition`, and a
+`systems` object with `modernWestern`/`classical`/`vedic` sections, each
+holding six buckets — `primary`, `secondary`, `contextual`,
+`futureRequired`, `excluded`, `conventionPending` — plus, where
+relevant, a `conventions` object and (Parents, Inner Shadow only) a
+`subdomains` or `conceptStatus` field. `recipes.js` holds the eight
+Topic Recipes as pure declarative data (no logic); `resolveItem.js`
+turns one recipe descriptor into one resolved `EvidenceItem` against the
+real chart; `helpers.js` holds the plain lookup/filter functions that
+resolution calls — nothing in any of these three files performs a new
+astronomical or astrological calculation. Classical house-lordship reuses
+the exact locked rulership table from Phase 3A/3E
+(`getDispositor()`), never a second rulership table; Vedic bhava-lordship
+reuses Phase 4B/4E's already-computed `chart.vedic.bhava`/`lordship`
+structures.
+
+**The eight initial topics**: Self / Core Nature, Career, Wealth,
+Relationship, Family & Roots, Parents, Siblings, and Inner Shadow. Each
+has its own hand-curated Modern Western / Classical / Vedic recipe
+reflecting what each system's own locked doctrine actually says is
+relevant — never a single mapping reused across all three systems.
+
+**Available vs. future-required evidence**: an `EvidenceItem`'s
+`availability` is one of `available`, `contextual_available`,
+`future_required`, `excluded`, or `convention_pending` — kept distinct
+from its recipe-declared `category` bucket, since a `secondary`-bucket
+item can still resolve to `available`. Because this project has no
+Western house-ruler layer and no Western aspect-calculation layer, every
+Modern Western recipe that would want "ruler of house N" or "aspect
+between X and Y" records that need as `future_required` rather than
+inventing the missing calculation — Phase 6 adds zero new Western,
+Classical, or Vedic doctrine of any kind (no Vedic Drishti, Dasha,
+Vargas, Shadbala, Ashtakavarga, or Yoga detection; no new Classical
+Horary mechanics). `contextual` items (a same-recipe relationship that
+may or may not exist in a given chart, e.g. "is the Career Bhava lord in
+a dispositor or ownership relationship with the Wealth Bhava lord?") are
+resolved with a `triggered: boolean` and `value: null` whenever
+`triggered` is `false` — Phase 6 never fabricates a relationship that
+does not exist in a given chart just to fill a recipe slot.
+
+**Convention handling**: two of the eight topics require a system to
+pick one convention among several traditionally-used options, and Phase
+6 always records the choice explicitly rather than presenting it as
+the system's only possible answer:
+- **Parents** never uses one universal "mother house" / "father house."
+  Modern Western uses `modern_h4_mother_h10_father` (Mother: House 4/IC
+  + Moon; Father: House 10/MC + Sun, with Saturn as a supporting
+  significator). Classical uses `traditional_lilly_h4_father_h10_mother`
+  (Father: House 4/L4; Mother: House 10/L10) — and does **not** hard-code
+  an additional traditional maternal natural significator (e.g. Venus or
+  the Moon by some traditions); that remains an explicit
+  `convention_pending` item rather than a silently-introduced doctrine.
+  Vedic uses `selected_jyotish_h4_mother_h9_father` (Mother: Bhava
+  4/Lord 4/Moon; Father: Bhava 9/Lord 9/Sun), recorded as a selected
+  convention rather than universal Jyotish doctrine.
+- **Inner Shadow** is a modern psychological framing
+  (`conceptStatus: "modern_psychological_framing"` for Modern Western)
+  that is never presented as a native Classical or Jyotish doctrine —
+  both of those sections carry
+  `conceptStatus: "cross_framework_relevant_evidence_only"` instead, and
+  Classical explicitly excludes Pluto, Black Moon Lilith, Horary
+  perfection mechanics, and psychological interpretation from its
+  bundle. Rahu/Ketu evidence in the Vedic section is retrieved and
+  labeled "relevant evidence," never equated with "shadow" or
+  "past-life shadow" as a doctrinal claim.
+
+**Natal/Horary boundary**: Phase 3G's Direct Perfection, Refranation,
+Translation of Light, Collection of Light, Prohibition, and raw
+interference mechanics are event-perfection tools for horary questions,
+not natal-chart facts — all eight Topic Recipes exclude all six by
+default (visible only in each Topic's collapsible "Excluded" debug
+list), while ordinary natal aspect facts (type, orb, applying/
+separating) remain retrievable where a recipe calls for them. Phase 3G
+itself is untouched and remains fully available outside the Topic
+Retrieval bundles.
+
+**Pre-lock audit** (see full results in the Phase 6 implementation
+report): source-path audit — every `available`/triggered-
+`contextual_available` evidence item's `sourcePath` resolves against the
+real verification chart via the same `resolveEvidencePath()` helper
+Phase 5 already established, zero unresolved; availability audit — every
+`future_required` item carries `value: null`; doctrine-boundary audit —
+Modern Western/Classical/Vedic are never merged, House and Bhava are
+never treated as equivalent, and no universal parent or wealth mapping
+exists; natal/horary audit — all six Phase 3G Horary mechanics are
+excluded from all eight natal bundles and never leak into any other
+bucket; mutation audit — mutating a resolved `chart.topicRetrieval`
+value never touches `chart.points`/`chart.classical`/`chart.vedic`; full
+regression — the entire test suite and production build both pass.
+
+**UI**: a compact bilingual Topic Retrieval section
+(`src/components/TopicRetrieval.jsx`) with an 8-topic selector; on
+selection, Modern Western / Classical / Vedic are shown as separate
+columns, each visually distinguishing Primary / Secondary / Contextual /
+Future Required / Convention Pending evidence, with Excluded evidence
+tucked into a collapsible technical/debug `<details>` block (matching
+this project's existing raw-data pattern). Parents gets a dedicated view
+showing the Parental Axis, Mother, and Father subdomains side by side
+with each system's convention labeled explicitly; Inner Shadow's
+Classical/Vedic columns are headed "Relevant Technical Evidence" rather
+than implying doctrinal equivalence. Confirmed responsive with zero
+page-level horizontal overflow and zero console errors at 390px, 430px,
+768px, and 1400px.
+
+No new production dependency was added. `chart.topicRetrieval` does not
+mutate `chart.points`/`chart.classical`/`chart.vedic`/`chart.crossSystem`
+in any way — confirmed by dedicated test. All 758 tests pass (726 prior
++ 32 new). **This phase has not been declared locked** — see the
+accompanying implementation report for the full audit and an explicit
+list of what remains open for review before locking.
+
+---
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```

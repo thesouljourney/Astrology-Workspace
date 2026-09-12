@@ -7,6 +7,7 @@ import ModernWestern from "./components/ModernWestern.jsx";
 import ClassicalAstrology from "./components/ClassicalAstrology.jsx";
 import VedicAstrology from "./components/VedicAstrology.jsx";
 import CrossSystemEvidence from "./components/CrossSystemEvidence.jsx";
+import TopicRetrieval from "./components/TopicRetrieval.jsx";
 import "./App.css";
 
 const DEFAULT_INPUT = {
@@ -235,6 +236,7 @@ function App() {
           <ClassicalAstrology chart={chart} />
           <VedicAstrology chart={chart} />
           <CrossSystemEvidence chart={chart} />
+          <TopicRetrieval chart={chart} />
         </section>
       )}
     </div>

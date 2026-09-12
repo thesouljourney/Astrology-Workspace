@@ -15,6 +15,7 @@ import { buildModernWesternPoints } from "./modernWestern.js";
 import { buildClassicalChart } from "./classical/classicalChart.js";
 import { buildVedicChart } from "./vedic/vedicChart.js";
 import { buildCrossSystemEvidence } from "./crossSystem.js";
+import { buildTopicRetrieval } from "./topicRetrieval/index.js";
 
 /**
  * Validates raw form input. Throws a descriptive Error on the first problem found.
@@ -149,6 +150,11 @@ export function calculateChart(input) {
   // above - no new astronomical or astrological calculation, no merge of
   // the three systems, no mutation of chart.points/chart.classical/chart.vedic.
   chart.crossSystem = buildCrossSystemEvidence({ chart });
+
+  // Phase 6: topic-based technical evidence retrieval - pure
+  // retrieval/mapping over the now-complete chart above, no new
+  // astronomical or astrological calculation, no interpretation.
+  chart.topicRetrieval = buildTopicRetrieval({ chart });
 
   return chart;
 }

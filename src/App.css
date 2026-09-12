@@ -294,3 +294,232 @@ th {
   margin-bottom: 10px;
   font-size: 0.85rem;
 }
+
+.topic-retrieval {
+  margin-top: 40px;
+  border-top: 3px double #333;
+  padding-top: 8px;
+}
+
+.topic-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.topic-btn {
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #333;
+}
+
+.topic-btn:hover {
+  background: #f0f0f0;
+}
+
+.topic-btn.active {
+  background: #2b2b2b;
+  color: #fff;
+  border-color: #2b2b2b;
+}
+
+.topic-definition {
+  margin-bottom: 16px;
+}
+
+/* Auto-fits 1/2/3 columns depending on available width - no fixed
+   3-column layout, so this stays inside .workspace's existing
+   min-width:0/width:100% responsive behavior without page-level
+   horizontal overflow. */
+.systems-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.system-column {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.system-column h4 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+}
+
+.evidence-section {
+  margin-top: 10px;
+}
+
+.evidence-section h5 {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #666;
+}
+
+.evidence-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evidence-row {
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-width: 0;
+  border-left: 3px solid #ccc;
+}
+
+.evidence-row.evidence-primary {
+  border-left-color: #2a6f2a;
+}
+
+.evidence-row.evidence-secondary {
+  border-left-color: #4a7fa5;
+}
+
+.evidence-row.evidence-contextual {
+  border-left-color: #a5824a;
+}
+
+.evidence-row.evidence-futureRequired {
+  border-left-color: #999;
+}
+
+.evidence-row.evidence-excluded {
+  border-left-color: #b02a2a;
+}
+
+.evidence-row.evidence-conventionPending {
+  border-left-color: #8a5aa5;
+}
+
+.evidence-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.evidence-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.evidence-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.68rem;
+}
+
+.evidence-role {
+  color: #666;
+  background: #f0f0f0;
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.evidence-availability {
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #fff;
+}
+
+.availability-available {
+  background: #2a6f2a;
+}
+
+.availability-contextual_available {
+  background: #a5824a;
+}
+
+.availability-future_required {
+  background: #999;
+}
+
+.availability-excluded {
+  background: #b02a2a;
+}
+
+.availability-convention_pending {
+  background: #8a5aa5;
+}
+
+.evidence-summary {
+  font-size: 0.78rem;
+  color: #333;
+  margin-top: 3px;
+  overflow-wrap: break-word;
+}
+
+.evidence-reason {
+  margin: 3px 0 0;
+}
+
+.evidence-raw {
+  margin-top: 4px;
+}
+
+.evidence-raw summary {
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.evidence-raw pre {
+  font-size: 0.68rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  background: #f8f8f8;
+  border-radius: 4px;
+  padding: 6px;
+  max-width: 100%;
+}
+
+.concept-status-note,
+.convention-note {
+  background: #f4f2ee;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 0 0 8px;
+}
+
+.parents-subdomain {
+  margin-top: 10px;
+}
+
+.parents-subdomain h6 {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #666;
+}
+
+.parents-subdomain ul {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
