@@ -63,9 +63,72 @@ export const CROSS_SYSTEM_VERSION = "phase_5_v1";
 export const CROSS_SYSTEM_TYPE = "evidence_mapping_layer";
 export const CROSS_SYSTEM_INTERPRETATION = "none";
 export const CROSS_SYSTEM_COMPARISON_POLICY = "conceptual_mapping_without_equivalence_or_scoring";
+export const CROSS_SYSTEM_EQUIVALENCE_POLICY = "identity_convention_coordinateFrame_and_numeric_equivalence_are_separate_dimensions";
 
 const SEVEN_CLASSICAL = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"];
 const OUTER_WESTERN_ONLY = ["uranus", "neptune", "pluto"];
+
+/**
+ * ====================================================================
+ * EQUIVALENCE DIMENSIONS (Pre-lock audit - see README §25.1)
+ * ====================================================================
+ * A single `numericallyEquivalent` boolean cannot represent everything
+ * "equivalence" might mean across two systems. This module always
+ * reports FOUR separate, independently-computed dimensions instead of
+ * collapsing them into one:
+ *
+ *   - sameAstronomicalIdentity: the two sides refer to the same
+ *     underlying astronomical body/point (e.g. Rahu IS the Moon's
+ *     ascending node, the same object North Node refers to).
+ *   - sameCalculationConvention: the two sides were computed using the
+ *     same underlying method/convention (e.g. both "mean node", not one
+ *     "true" and one "mean"). For ordinary planets there is only one
+ *     convention in this project (a direct ephemeris read), so this is
+ *     trivially true; for lunar nodes it depends on the caller's chosen
+ *     Western `nodeType` versus Vedic's fixed "mean" convention.
+ *   - sameCoordinateFrame: the two sides' NATIVE displayed longitudes
+ *     are expressed in the same zodiac/coordinate frame (tropical vs.
+ *     sidereal). This project's Western/Classical output is ALWAYS
+ *     tropical and Vedic output is ALWAYS sidereal, so this is always
+ *     `false` for any Western/Classical-vs-Vedic pairing today — a live
+ *     comparison of `chart.meta.zodiacType`/`chart.vedic.meta.zodiacType`,
+ *     not a hard-coded constant, so it stays correct if either side's
+ *     architecture ever changes.
+ *   - numericallyEquivalent: `true` ONLY when `sameCoordinateFrame` is
+ *     `true` AND the two native longitudes agree within
+ *     `COORDINATE_TOLERANCE_DEGREES`. Matching calculation convention
+ *     alone (e.g. both selecting "mean node") is explicitly NOT
+ *     sufficient — a Western Mean Node and Vedic Mean Rahu differ by the
+ *     full ayanamsha offset (~23.8° for the locked verification chart)
+ *     even though they share the same node-calculation convention. This
+ *     was a genuine bug in this module's original implementation
+ *     (`numericallyEquivalent: sameConvention`), caught and fixed in
+ *     this pre-lock audit — never conflate "same convention" with "same
+ *     number." No coordinate conversion is ever performed here merely to
+ *     force equivalence; the native values are compared as-is.
+ */
+const COORDINATE_TOLERANCE_DEGREES = 1e-6;
+
+/** Shortest angular separation between two longitudes, always in [0, 180]. */
+function angularDifferenceDegrees(a, b) {
+  let diff = Math.abs(a - b) % 360;
+  if (diff > 180) diff = 360 - diff;
+  return diff;
+}
+
+/**
+ * Computes the four equivalence dimensions for a two-system comparison.
+ * @param {object} params
+ * @param {boolean} params.sameAstronomicalIdentity
+ * @param {boolean} params.sameCalculationConvention
+ * @param {boolean} params.sameCoordinateFrame
+ * @param {number} [params.longitudeA] required only when sameCoordinateFrame is true
+ * @param {number} [params.longitudeB] required only when sameCoordinateFrame is true
+ */
+function buildEquivalence({ sameAstronomicalIdentity, sameCalculationConvention, sameCoordinateFrame, longitudeA, longitudeB }) {
+  const numericallyEquivalent = sameCoordinateFrame && angularDifferenceDegrees(longitudeA, longitudeB) <= COORDINATE_TOLERANCE_DEGREES;
+  return { sameAstronomicalIdentity, sameCalculationConvention, sameCoordinateFrame, numericallyEquivalent };
+}
 
 /**
  * Resolves a dot-separated path against `chart` — see module doc comment
@@ -312,6 +375,21 @@ function buildSharedPlanetIdentity(chart, key, displayName) {
   const vg = chart.vedic.grahas[key];
   const vs = chart.vedic.summary.grahas[key];
 
+  // Western vs Vedic is the only pair here whose "equivalence" was ever
+  // ambiguous (see module doc comment "EQUIVALENCE DIMENSIONS"). Western
+  // and Classical are known LIVE to share the identical tropical value
+  // (Classical never recomputes a planet's position - it reads Phase 1's
+  // own longitude verbatim), exposed as its own plain fact below rather
+  // than folded into the tropical-vs-sidereal dimensions.
+  const sameCoordinateFrame = chart.meta.zodiacType === chart.vedic.meta.zodiacType;
+  const equivalence = buildEquivalence({
+    sameAstronomicalIdentity: true,
+    sameCalculationConvention: true, // one ephemeris read, reused verbatim by Classical, sidereal-converted by Vedic - no alternate convention exists for ordinary planets
+    sameCoordinateFrame,
+    longitudeA: wp.absoluteLongitude,
+    longitudeB: vg.siderealLongitude,
+  });
+
   return {
     canonicalBody: displayName,
     astronomicalKey: key,
@@ -342,10 +420,13 @@ function buildSharedPlanetIdentity(chart, key, displayName) {
         provenance: "phase_4a",
       },
     },
-    zodiacFrameworksDiffer: true,
-    conceptuallyRelated: true,
-    numericallyEquivalent: false,
-    note: "Same astronomical body observed under three different astrological frameworks (tropical Western/Classical vs. sidereal Vedic) - never the same longitude/sign by construction, and never expected to be.",
+    // Describes the Modern-Western-vs-Vedic relationship specifically
+    // (tropical vs. sidereal - see module doc comment). Western and
+    // Classical's own relationship is the separate, live-checked fact
+    // below - never merged into these four dimensions.
+    ...equivalence,
+    westernAndClassicalShareValue: wp.absoluteLongitude === chart.classical.summary.planets[key].position.absoluteLongitude,
+    note: "Same astronomical body observed under three different astrological frameworks. Modern Western and Classical share the identical tropical longitude by direct reuse (see westernAndClassicalShareValue); Vedic's sidereal longitude is never expected to numerically match either, even when the underlying calculation convention is the same.",
   };
 }
 
@@ -367,9 +448,11 @@ function buildOuterPlanetIdentity(chart, key, displayName) {
       classical: { implemented: false, reason: "Classical astrology in this project scopes to the seven traditional (visible) planets only - never fabricated for the outer/modern planets." },
       vedic: { implemented: false, reason: "Vedic Navagraha does not include the outer/modern planets - never fabricated." },
     },
-    conceptuallyRelated: false,
+    sameAstronomicalIdentity: false,
+    sameCalculationConvention: false,
+    sameCoordinateFrame: false,
     numericallyEquivalent: false,
-    note: "Modern-discovery body with no traditional/Vedic counterpart in this project - intentionally not mapped to either system, never approximated.",
+    note: "Modern-discovery body with no traditional/Vedic counterpart in this project - intentionally not mapped to either system, never approximated. All four equivalence dimensions are false because there is no second-system body to compare to at all, not because a comparison was attempted and failed.",
   };
 }
 
@@ -378,7 +461,35 @@ function buildNodeIdentity(chart) {
   const wpSouth = findPoint(chart, "southNode");
   const westernNodeType = chart.meta.nodeType;
   const vedicNodeType = chart.vedic.meta.vedicNodeType;
-  const sameConvention = westernNodeType === vedicNodeType;
+  const sameCalculationConvention = westernNodeType === vedicNodeType;
+  // Western node longitudes are always tropical; Vedic Rahu/Ketu are
+  // always sidereal - live comparison, see module doc comment.
+  const sameCoordinateFrame = chart.meta.zodiacType === chart.vedic.meta.zodiacType;
+
+  function equivalenceNote(sameConvention, sameFrame) {
+    if (!sameConvention) {
+      return `Modern Western is using the ${westernNodeType} node convention while Vedic always uses the mean node - different calculation conventions, and (independently) different coordinate frames, so NOT numerically equivalent.`;
+    }
+    if (!sameFrame) {
+      return `Both systems use the same node convention (${westernNodeType}) for this chart, but Modern Western's longitude is tropical and Vedic's is sidereal - matching calculation convention does NOT imply matching coordinate frame or numeric value; the two longitudes differ by the ayanamsha offset.`;
+    }
+    return "Both systems use the same node convention and the same coordinate frame for this chart.";
+  }
+
+  const ascendingEquivalence = buildEquivalence({
+    sameAstronomicalIdentity: true,
+    sameCalculationConvention,
+    sameCoordinateFrame,
+    longitudeA: wpNorth.absoluteLongitude,
+    longitudeB: chart.vedic.grahas.rahu.siderealLongitude,
+  });
+  const descendingEquivalence = buildEquivalence({
+    sameAstronomicalIdentity: true,
+    sameCalculationConvention,
+    sameCoordinateFrame,
+    longitudeA: wpSouth.absoluteLongitude,
+    longitudeB: chart.vedic.grahas.ketu.siderealLongitude,
+  });
 
   return {
     ascendingNode: {
@@ -404,11 +515,8 @@ function buildNodeIdentity(chart) {
           provenance: "phase_4a",
         },
       },
-      conceptuallyRelated: true,
-      numericallyEquivalent: sameConvention,
-      note: sameConvention
-        ? "Both systems currently use the same node convention (" + westernNodeType + ") for this chart - the underlying node calculation is the same shared function, though the exposed longitudes still differ by the tropical/sidereal (ayanamsha) offset."
-        : `Modern Western is using the ${westernNodeType} node convention while Vedic always uses the mean node - the two are NOT guaranteed numerically equivalent unless the same convention is selected for both.`,
+      ...ascendingEquivalence,
+      note: equivalenceNote(sameCalculationConvention, sameCoordinateFrame),
     },
     descendingNode: {
       concept: "lunar_descending_node",
@@ -433,11 +541,8 @@ function buildNodeIdentity(chart) {
           provenance: "phase_4a",
         },
       },
-      conceptuallyRelated: true,
-      numericallyEquivalent: sameConvention,
-      note: sameConvention
-        ? "Both systems currently use the same node convention (" + westernNodeType + ") for this chart."
-        : `Modern Western is using the ${westernNodeType} node convention while Vedic always uses the mean node - NOT guaranteed numerically equivalent unless the same convention is selected for both.`,
+      ...descendingEquivalence,
+      note: equivalenceNote(sameCalculationConvention, sameCoordinateFrame),
     },
   };
 }
@@ -518,7 +623,7 @@ function buildConceptFamilies(chart) {
   families.push({
     family: "planetary_status_by_sign",
     label: "Planetary Status by Sign (Dignity)",
-    description: "Classical essential dignity != Vedic dignity - conceptually comparable, never numerically combined, never a shared score.",
+    description: "Classical essential dignity != Vedic dignity - conceptually comparable, never numerically combined, never reduced to one shared number.",
     descriptors: [
       descriptor({ system: "modernWestern", category: "dignity", concept: "essential_dignity", sourcePath: null, provenance: "phase_2a", implemented: false, comparableFamily: "planetary_status_by_sign", note: "Phase 2A contains no dignity table - never invented." }),
       descriptor({ system: "classical", category: "dignity", concept: "essential_dignity", sourcePath: "classical.summary.planets.sun.essentialDignity", provenance: "phase_3a", implemented: true, comparableFamily: "planetary_status_by_sign" }),
@@ -630,10 +735,11 @@ function buildNonEquivalentConcepts() {
     { conceptA: { system: "classical", label: "Classical Reception" }, conceptB: { system: "vedic", label: "Vedic Sign Relationship" }, reason: "Reception is a dignity-holder relationship between two actual chart placements; Vedic's natural sign relationship (friend/neutral/enemy) is a fixed planet-to-planet table applied to the current sign lord - structurally different mechanisms." },
     { conceptA: { system: "classical", label: "Classical Horary Perfection" }, conceptB: { system: "vedic", label: "Any current Vedic structure" }, reason: "No Vedic timing-mechanics structure exists in this project at all - there is nothing to equate Perfection to." },
     { conceptA: { system: "modernWestern", label: "Western Aspect" }, conceptB: { system: "classical", label: "Classical Horary Perfection" }, reason: "An aspect is a static geometric relationship; Perfection is a future-motion event-search outcome - different question entirely, even within the same tropical framework." },
-    { conceptA: { system: "modernWestern", label: "True Node (default)" }, conceptB: { system: "vedic", label: "Mean Rahu" }, reason: "Different node conventions (osculating true node vs. mean node) - not guaranteed numerically equivalent unless the same convention is explicitly selected for both." },
+    { conceptA: { system: "modernWestern", label: "True Node (default)" }, conceptB: { system: "vedic", label: "Mean Rahu" }, reason: "Different node conventions (osculating true node vs. mean node) AND different coordinate frames (tropical vs. sidereal) - not numerically equivalent. Even when Western is explicitly switched to the Mean Node (matching Vedic's convention), the two longitudes still differ by the full ayanamsha offset, since the coordinate frames remain different - matching convention alone never implies matching number." },
     { conceptA: { system: "modernWestern", label: "Placidus 10th House" }, conceptB: { system: "vedic", label: "Whole-Sign 10th Bhava" }, reason: "Different house-division rule entirely (degree-based cusp vs. whole-sign-from-Lagna) - a coincidental sign match establishes nothing." },
     { conceptA: { system: "modernWestern", label: "Modern Chart Ruler" }, conceptB: { system: "vedic", label: "Vedic Lagna Lord" }, reason: "Neither this project's Phase 2A nor its Classical implementation computes a 'chart ruler' field at all - and even if it did, it would be a tropical domicile lookup against a Placidus Ascendant, structurally distinct from the Vedic Lagna Lord's sidereal Whole-Sign lookup." },
     { conceptA: { system: "modernWestern", label: "MC" }, conceptB: { system: "vedic", label: "Vedic 10th Bhava" }, reason: "MC is a specific degree derived from the meridian; the 10th Bhava is the entire sign occupied by the whole-sign house 10 positions from the Lagna - not the same construct, and this project has not built a Vedic MC equivalent at all." },
+    { conceptA: { system: "modernWestern", label: "ASC (tropical Ascendant)" }, conceptB: { system: "vedic", label: "Lagna (sidereal Ascendant)" }, reason: "Both are 'the rising point,' but computed in different coordinate frames (tropical vs. sidereal Lahiri) - never the same degree or sign. Classical reuses the identical tropical ASC as Modern Western; Vedic's Lagna is never expected to numerically match either." },
   ];
 }
 
@@ -710,6 +816,7 @@ export function buildCrossSystemEvidence({ chart }) {
       crossSystemType: CROSS_SYSTEM_TYPE,
       crossSystemInterpretation: CROSS_SYSTEM_INTERPRETATION,
       crossSystemComparisonPolicy: CROSS_SYSTEM_COMPARISON_POLICY,
+      crossSystemEquivalencePolicy: CROSS_SYSTEM_EQUIVALENCE_POLICY,
     },
     systems,
     evidenceAvailability,

@@ -131,12 +131,172 @@ describe("TEST 9: True Node vs Mean Rahu marked non-numerically-equivalent by de
     expect(c.vedic.meta.vedicNodeType).toBe("mean");
     expect(c.crossSystem.bodyIdentities.northNode_rahu.numericallyEquivalent).toBe(false);
     expect(c.crossSystem.bodyIdentities.southNode_ketu.numericallyEquivalent).toBe(false);
-    expect(c.crossSystem.bodyIdentities.northNode_rahu.conceptuallyRelated).toBe(true);
+    expect(c.crossSystem.bodyIdentities.northNode_rahu.sameAstronomicalIdentity).toBe(true);
   });
 
-  it("selecting the same convention (mean) for Western flips numericallyEquivalent to true", () => {
+  it("selecting the same convention (mean) for Western still keeps numericallyEquivalent false - matching convention never implies matching coordinate frame (pre-lock audit fix)", () => {
     const c = calculateChart({ ...VERIFICATION_INPUT, nodeType: "mean" });
-    expect(c.crossSystem.bodyIdentities.northNode_rahu.numericallyEquivalent).toBe(true);
+    expect(c.crossSystem.bodyIdentities.northNode_rahu.sameCalculationConvention).toBe(true);
+    expect(c.crossSystem.bodyIdentities.northNode_rahu.sameCoordinateFrame).toBe(false);
+    expect(c.crossSystem.bodyIdentities.northNode_rahu.numericallyEquivalent).toBe(false);
+  });
+});
+
+// ============================================================
+// Pre-lock audit: cross-system equivalence semantics (Part J)
+// ============================================================
+
+describe("Audit Part J.1: Western True Node vs Vedic Mean Rahu equivalence dimensions", () => {
+  it("sameAstronomicalIdentity=true, sameCalculationConvention=false, sameCoordinateFrame=false, numericallyEquivalent=false", () => {
+    const c = chart();
+    const n = c.crossSystem.bodyIdentities.northNode_rahu;
+    expect(n.sameAstronomicalIdentity).toBe(true);
+    expect(n.sameCalculationConvention).toBe(false);
+    expect(n.sameCoordinateFrame).toBe(false);
+    expect(n.numericallyEquivalent).toBe(false);
+  });
+});
+
+describe("Audit Part J.2: Western Mean Node vs Vedic Mean Rahu equivalence dimensions", () => {
+  it("sameAstronomicalIdentity=true, sameCalculationConvention=true, sameCoordinateFrame=false, numericallyEquivalent=false", () => {
+    const c = calculateChart({ ...VERIFICATION_INPUT, nodeType: "mean" });
+    const n = c.crossSystem.bodyIdentities.northNode_rahu;
+    expect(n.sameAstronomicalIdentity).toBe(true);
+    expect(n.sameCalculationConvention).toBe(true);
+    expect(n.sameCoordinateFrame).toBe(false);
+    expect(n.numericallyEquivalent).toBe(false);
+    // The native longitudes must genuinely differ by the ayanamsha offset,
+    // not merely be labeled non-equivalent - proves the fix isn't cosmetic.
+    const diff = Math.abs(n.systems.modernWestern.longitude - n.systems.vedic.longitude);
+    expect(diff).toBeGreaterThan(20);
+    expect(diff).toBeLessThan(25);
+  });
+});
+
+describe("Audit Part J.3: South Node / Ketu equivalent cases", () => {
+  it("mirrors the North Node/Rahu cases under both default and Mean Node settings", () => {
+    const cDefault = chart();
+    const sDefault = cDefault.crossSystem.bodyIdentities.southNode_ketu;
+    expect(sDefault.sameAstronomicalIdentity).toBe(true);
+    expect(sDefault.sameCalculationConvention).toBe(false);
+    expect(sDefault.sameCoordinateFrame).toBe(false);
+    expect(sDefault.numericallyEquivalent).toBe(false);
+
+    const cMean = calculateChart({ ...VERIFICATION_INPUT, nodeType: "mean" });
+    const sMean = cMean.crossSystem.bodyIdentities.southNode_ketu;
+    expect(sMean.sameCalculationConvention).toBe(true);
+    expect(sMean.sameCoordinateFrame).toBe(false);
+    expect(sMean.numericallyEquivalent).toBe(false);
+  });
+});
+
+describe("Audit Part J.4: native Tropical vs Sidereal longitude difference remains preserved", () => {
+  it("northNode_rahu/southNode_ketu still expose each system's own native longitude, unconverted", () => {
+    const c = chart();
+    const n = c.crossSystem.bodyIdentities.northNode_rahu;
+    expect(n.systems.modernWestern.longitude).toBe(c.points.find((p) => p.id === "northNode").absoluteLongitude);
+    expect(n.systems.vedic.longitude).toBe(c.vedic.grahas.rahu.siderealLongitude);
+    expect(n.systems.modernWestern.longitude).not.toBeCloseTo(n.systems.vedic.longitude, 3);
+  });
+});
+
+describe("Audit Part J.5: Sun-Saturn shared identity does not imply same zodiac longitude/sign", () => {
+  it("every shared planet has sameAstronomicalIdentity=true but numericallyEquivalent=false (Western/Classical vs Vedic), and Western/Classical's own agreement is a separate live fact", () => {
+    const c = chart();
+    for (const key of SEVEN_CLASSICAL) {
+      const b = c.crossSystem.bodyIdentities[key];
+      expect(b.sameAstronomicalIdentity).toBe(true);
+      expect(b.sameCoordinateFrame).toBe(false);
+      expect(b.numericallyEquivalent).toBe(false);
+      expect(b.westernAndClassicalShareValue).toBe(true);
+      expect(b.systems.modernWestern.longitude).toBe(b.systems.classical.longitude);
+      expect(b.systems.modernWestern.longitude).not.toBe(b.systems.vedic.longitude);
+    }
+  });
+});
+
+describe("Audit Part J.6: ASC and Lagna are not marked numerically equivalent merely because both are ascendant-related", () => {
+  it("no numericallyEquivalent boolean exists anywhere claiming ASC=Lagna, and the pair is explicitly registered as non-equivalent", () => {
+    const c = chart();
+    const pair = c.crossSystem.nonEquivalentConcepts.find((p) => p.conceptA.label.includes("ASC") && p.conceptB.label.includes("Lagna"));
+    expect(pair).toBeTruthy();
+    // self_identity family descriptors never carry a numericallyEquivalent field.
+    const family = c.crossSystem.conceptFamilies.find((f) => f.family === "self_identity");
+    for (const d of family.descriptors) {
+      expect(d).not.toHaveProperty("numericallyEquivalent");
+    }
+  });
+});
+
+describe("Audit Part J.7: MC and Vedic 10th Bhava remain non-equivalent constructs", () => {
+  it("still explicitly registered in nonEquivalentConcepts, unaffected by the equivalence-dimension refactor", () => {
+    const c = chart();
+    const pair = c.crossSystem.nonEquivalentConcepts.find((p) => p.conceptA.label === "MC" && p.conceptB.label.includes("10th Bhava"));
+    expect(pair).toBeTruthy();
+  });
+});
+
+describe("Audit Part J.8: no cross-system dignity equivalence introduced", () => {
+  it("planetary_status_by_sign family descriptors carry no numericallyEquivalent/sameCoordinateFrame field", () => {
+    const c = chart();
+    const family = c.crossSystem.conceptFamilies.find((f) => f.family === "planetary_status_by_sign");
+    for (const d of family.descriptors) {
+      expect(d).not.toHaveProperty("numericallyEquivalent");
+      expect(d).not.toHaveProperty("sameCoordinateFrame");
+    }
+  });
+});
+
+describe("Audit Part J.9: no dispositor equivalence introduced", () => {
+  it("dispositor_structure family descriptors carry no numericallyEquivalent/sameCoordinateFrame field", () => {
+    const c = chart();
+    const family = c.crossSystem.conceptFamilies.find((f) => f.family === "dispositor_structure");
+    for (const d of family.descriptors) {
+      expect(d).not.toHaveProperty("numericallyEquivalent");
+      expect(d).not.toHaveProperty("sameCoordinateFrame");
+    }
+  });
+});
+
+describe("Audit Part J.10: every sourcePath still resolves", () => {
+  it("all sourcePaths collected from the refactored chart.crossSystem resolve to a defined value", () => {
+    const c = chart();
+    const paths = collectSourcePaths(c.crossSystem);
+    expect(paths.length).toBeGreaterThan(20);
+    for (const p of paths) {
+      expect(resolveEvidencePath(c, p), `sourcePath "${p}" did not resolve`).not.toBeUndefined();
+    }
+  });
+});
+
+describe("Audit Part J.11: no interpretation", () => {
+  it("no strong/weak/auspicious/career language introduced by the equivalence refactor", () => {
+    const { crossSystem } = chart();
+    expect(JSON.stringify(crossSystem)).not.toMatch(/\bstrong\b|\bweak\b|auspicious|inauspicious|\bcareer\b/i);
+  });
+});
+
+describe("Audit Part J.12: no scoring", () => {
+  it("no score field introduced by the equivalence refactor", () => {
+    const { crossSystem } = chart();
+    expect(JSON.stringify(crossSystem)).not.toMatch(/score/i);
+  });
+});
+
+describe("Audit Part J.13: no agreement/contradiction judgment", () => {
+  it("no 'agree'/'contradict' text introduced by the equivalence refactor", () => {
+    const { crossSystem } = chart();
+    expect(JSON.stringify(crossSystem)).not.toMatch(/\bagree\b|contradict/i);
+  });
+});
+
+describe("Audit Part J.14-16: Western/Classical/Vedic source unchanged", () => {
+  it("chart.points/chart.classical/chart.vedic are byte-for-byte identical to a fresh independent computation", () => {
+    const withAudit = chart();
+    const fresh = calculateChart(VERIFICATION_INPUT);
+    expect(withAudit.points).toEqual(fresh.points);
+    expect(withAudit.classical).toEqual(fresh.classical);
+    expect(withAudit.vedic).toEqual(fresh.vedic);
   });
 });
 
@@ -509,7 +669,7 @@ describe("Verification-chart cross-system totals reconcile", () => {
     expect(crossSystem.evidenceAvailability.dignity.modernWestern.status).toBe("notImplemented");
     expect(crossSystem.evidenceAvailability.dignity.classical.status).toBe("implemented");
     expect(crossSystem.evidenceAvailability.dignity.vedic.status).toBe("implemented");
-    expect(crossSystem.nonEquivalentConcepts.length).toBe(9);
+    expect(crossSystem.nonEquivalentConcepts.length).toBe(10);
     expect(crossSystem.conceptFamilies.length).toBeGreaterThanOrEqual(9);
   });
 });

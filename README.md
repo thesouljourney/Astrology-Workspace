@@ -3055,6 +3055,88 @@ every category in `evidenceAvailability` and every pair in
 `nonEquivalentConcepts` traces to either a live-verified implementation
 fact or an explicit, reasoned `notApplicable`/`notImplemented` status.
 
+### 25.1 Pre-lock audit: cross-system equivalence semantics (nodes and beyond)
+
+Before locking Phase 5, a focused audit re-examined every place this
+module used the words "equivalent"/"same"/"identical," prompted by a
+review of the original `numericallyEquivalent` logic for lunar nodes.
+
+**The bug**: the original code computed
+`numericallyEquivalent: westernNodeType === vedicNodeType` — i.e. it
+reported nodes as numerically equivalent whenever both systems selected
+the same node CONVENTION (mean vs. true), regardless of coordinate
+frame. This is wrong: Western node longitudes are always tropical and
+Vedic Rahu/Ketu are always sidereal, so even with matching conventions
+the two native longitudes differ by the full ayanamsha offset. Verified
+on the locked verification chart: with Western explicitly set to the
+Mean Node (matching Vedic's fixed mean-node convention), the North
+Node/Rahu longitudes are `223.9495°` (tropical) vs. `200.1638°`
+(sidereal) — a genuine `23.79°` difference, not a rounding artifact —
+yet the old code would have reported `numericallyEquivalent: true`.
+
+**The fix — four separate, independently-computed dimensions**,
+replacing every `conceptuallyRelated`/`numericallyEquivalent` pair in
+`bodyIdentities` (shared planets, outer planets, and both lunar nodes):
+
+- `sameAstronomicalIdentity` — do the two sides refer to the same
+  underlying astronomical body/point (e.g. Rahu IS the Moon's ascending
+  node)?
+- `sameCalculationConvention` — were the two sides computed with the
+  same underlying method (e.g. both "mean node")? Always `true` for
+  ordinary planets (one ephemeris read, reused/converted, no alternate
+  convention exists); for nodes it depends on the caller's chosen
+  Western `nodeType` versus Vedic's fixed `"mean"`.
+- `sameCoordinateFrame` — are the two sides' NATIVE displayed
+  longitudes in the same zodiac frame? Computed LIVE
+  (`chart.meta.zodiacType === chart.vedic.meta.zodiacType`), always
+  `false` today since this project's Western/Classical output is always
+  tropical and Vedic is always sidereal.
+- `numericallyEquivalent` — `true` ONLY when `sameCoordinateFrame` is
+  `true` AND the native longitudes agree within a documented
+  `1e-6`-degree tolerance. Matching calculation convention alone is
+  explicitly NOT sufficient. No coordinate conversion is ever performed
+  merely to force equivalence — the native values are compared as-is.
+
+For shared planets (Sun...Saturn), Modern Western and Classical are
+additionally known, live, to share the byte-identical tropical
+longitude (Classical never recomputes a position — it reads Phase 1's
+own value verbatim) — exposed as its own plain fact,
+`westernAndClassicalShareValue`, kept separate from the four dimensions
+above (which describe the Western-vs-Vedic relationship specifically).
+
+**Other equivalence-semantics findings**: auditing every other
+`equivalent`/`same`/`identical` usage in the module found no other
+boolean-level conflation — Classical dispositor/dignity vs. Vedic
+dispositor/dignity, and Western/Classical houses vs. Vedic Bhava, were
+never represented by a numeric-equivalence boolean at all (only by
+concept-family grouping plus the `nonEquivalentConcepts` prose registry,
+which already correctly kept them separate). One genuine gap was found
+and fixed: ASC (tropical Ascendant) vs. Lagna (sidereal Ascendant) had
+no explicit `nonEquivalentConcepts` entry despite being exactly the kind
+of pair this registry exists to cover — added as a 10th entry.
+
+**UI**: the Shared Bodies table's single, misleading-by-omission
+"Numerically Equivalent" column is now four columns — Same Point / Same
+Convention / Same Frame / Numerically Equivalent — with a note
+explaining that Same Frame (and therefore Numerically Equivalent) is
+always "—" for any Western/Classical-vs-Vedic row in this app, even when
+Same Convention is "✓".
+
+New metadata: `crossSystemEquivalencePolicy:
+"identity_convention_coordinateFrame_and_numeric_equivalence_are_separate_dimensions"`.
+
+**No astrology calculation changed**: this audit touched only
+`crossSystem.js`'s equivalence-labeling logic — no Phase 1-4F
+calculation, no new doctrine. `chart.points`, `chart.classical`, and
+`chart.vedic` are confirmed byte-for-byte unchanged by dedicated test.
+14 new tests were added (the two dimension scenarios named in the audit,
+South Node/Ketu mirrors, native-longitude preservation, Sun-Saturn
+non-implied-equivalence, ASC/Lagna and MC/10th-Bhava non-equivalence
+confirmations, no dignity/dispositor equivalence introduced, full
+sourcePath re-validation, and no-interpretation/no-scoring/no-agreement/
+full-regression checks). All 726 tests pass (712 prior + 14 new). Phase
+5 remains safe to lock.
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:

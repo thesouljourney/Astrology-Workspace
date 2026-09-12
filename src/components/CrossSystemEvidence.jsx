@@ -102,8 +102,8 @@ export default function CrossSystemEvidence({ chart }) {
 
       <h3>Shared Bodies｜共同天体</h3>
       <p className="reception-note">
-        Same astronomical body, three different astrological frameworks — position values are never expected to match
-        across tropical and sidereal｜同一天体，三种不同占星框架 — 回归制与恒星制的数值本不应相同
+        Same astronomical point, three different astrological frameworks — matching calculation convention does NOT
+        imply matching zodiac frame or matching number｜同一天体，三种不同占星框架 — 算法相同不代表坐标系或数值相同
       </p>
       <div className="table-scroll">
         <table className="classical-table">
@@ -113,7 +113,10 @@ export default function CrossSystemEvidence({ chart }) {
               <th>Western Sign｜西方星座</th>
               <th>Classical Sign｜古典星座</th>
               <th>Vedic Rashi｜印度星座</th>
-              <th>Numerically Equivalent｜数值等价</th>
+              <th title="Same astronomical point｜同一天体">Same Point｜同一天体</th>
+              <th title="Same calculation convention｜同一算法">Same Convention｜同一算法</th>
+              <th title="Same zodiac/coordinate frame｜同一坐标系">Same Frame｜同一坐标系</th>
+              <th title="Numerically equivalent (same frame AND same number)｜数值等价（同坐标系且数值相符）">Numerically Equivalent｜数值等价</th>
             </tr>
           </thead>
           <tbody>
@@ -125,27 +128,38 @@ export default function CrossSystemEvidence({ chart }) {
                   <td>{b.systems.modernWestern.sign}</td>
                   <td>{b.systems.classical.sign}</td>
                   <td>{b.systems.vedic.sign}</td>
-                  <td>{b.numericallyEquivalent ? "Yes｜是" : "No｜否"}</td>
+                  <td>{b.sameAstronomicalIdentity ? "✓" : "—"}</td>
+                  <td>{b.sameCalculationConvention ? "✓" : "—"}</td>
+                  <td>{b.sameCoordinateFrame ? "✓" : "—"}</td>
+                  <td>{b.numericallyEquivalent ? "✓" : "—"}</td>
                 </tr>
               );
             })}
-            <tr>
-              <td>North Node / Rahu｜北交点/罗睺</td>
-              <td>{bodyIdentities.northNode_rahu.systems.modernWestern.sign} ({bodyIdentities.northNode_rahu.systems.modernWestern.convention})</td>
-              <td>—</td>
-              <td>{bodyIdentities.northNode_rahu.systems.vedic.sign} ({bodyIdentities.northNode_rahu.systems.vedic.convention})</td>
-              <td>{bodyIdentities.northNode_rahu.numericallyEquivalent ? "Yes｜是" : "No｜否"}</td>
-            </tr>
-            <tr>
-              <td>South Node / Ketu｜南交点/计都</td>
-              <td>{bodyIdentities.southNode_ketu.systems.modernWestern.sign} ({bodyIdentities.southNode_ketu.systems.modernWestern.convention})</td>
-              <td>—</td>
-              <td>{bodyIdentities.southNode_ketu.systems.vedic.sign} ({bodyIdentities.southNode_ketu.systems.vedic.convention})</td>
-              <td>{bodyIdentities.southNode_ketu.numericallyEquivalent ? "Yes｜是" : "No｜否"}</td>
-            </tr>
+            {["northNode_rahu", "southNode_ketu"].map((key) => {
+              const b = bodyIdentities[key];
+              const label = key === "northNode_rahu" ? "North Node / Rahu｜北交点/罗睺" : "South Node / Ketu｜南交点/计都";
+              return (
+                <tr key={key}>
+                  <td>{label}</td>
+                  <td>{b.systems.modernWestern.sign} ({b.systems.modernWestern.convention})</td>
+                  <td>—</td>
+                  <td>{b.systems.vedic.sign} ({b.systems.vedic.convention})</td>
+                  <td>{b.sameAstronomicalIdentity ? "✓" : "—"}</td>
+                  <td>{b.sameCalculationConvention ? "✓" : "—"}</td>
+                  <td>{b.sameCoordinateFrame ? "✓" : "—"}</td>
+                  <td>{b.numericallyEquivalent ? "✓" : "—"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+      <p className="reception-note">
+        Same Frame (and therefore Numerically Equivalent) is always "—" for any Western/Classical-vs-Vedic row in this
+        app, because Western/Classical output is always tropical and Vedic output is always sidereal — even when Same
+        Convention is "✓" (e.g. both selecting the Mean Node)｜本应用中西方/古典与印度的比较，"同一坐标系"（及"数值等价"）恒为
+        "—"，因西方/古典恒为回归制、印度恒为恒星制 — 即使"同一算法"为"✓"（如双方皆选平交点）亦然
+      </p>
 
       <h3>Evidence Availability Matrix｜证据可用性矩阵</h3>
       <div className="table-scroll">
