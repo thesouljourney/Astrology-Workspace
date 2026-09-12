@@ -1477,13 +1477,24 @@ historical N.C. Lahiri / Indian Calendar Reform Committee (1956)
 Chitrapaksha definition (anchor: tropical/sidereal coincidence ≈285 CE,
 official 1956 decree value 23°15′00″), and (B) a **temporary dev-only**
 Swiss Ephemeris cross-check (`sweph-wasm`, installed only long enough to
-measure `SE_SIDM_LAHIRI` at six dates spanning 1900–2024, then
-immediately uninstalled — never a production dependency). This module's
-single calibrated constant reproduces Swiss Ephemeris's Lahiri to within
-**0.0003 arcseconds** at every one of those six dates, including this
-project's own locked verification date — far tighter than the
-"arcminute or larger" threshold that would have required stopping to
-report a material disagreement. No such disagreement was found.
+measure `swe_get_ayanamsa_ut()` — Swiss Ephemeris's own documentation
+states this function computes the ayanamsha "without considering
+nutation"; this was additionally confirmed empirically by comparing it
+against `swe_get_ayanamsa_ex_ut()` with and without the `SEFLG_NONUT`
+flag, which reproduce the same value only when `SEFLG_NONUT` is set —
+for `SE_SIDM_LAHIRI` at six dates spanning 1900–2024, then immediately
+uninstalled — never a production dependency). This module's single
+calibrated constant reproduces that specific, confirmed-nutation-
+excluded Swiss Ephemeris quantity to within **0.0003 arcseconds** at
+every one of those six dates, including this project's own locked
+verification date — far tighter than the "arcminute or larger" threshold
+that would have required stopping to report a material disagreement. No
+such disagreement was found. `computeLahiriAyanamsha()` therefore
+implements the **mean (precessional-only, nutation-excluded)** Lahiri
+ayanamsha — never the "true"/apparent Chitrapaksha value, and never a
+reproduction of Swiss Ephemeris's full `SEFLG_SIDEREAL` planetary
+pipeline (see the pre-lock audit subsection below for exactly how those
+differ and by how much, quantitatively).
 
 A genuine, disclosed subtlety was found and documented rather than
 hidden: Swiss Ephemeris's own internal sidereal pipeline subtracts this
@@ -1494,8 +1505,10 @@ Subtracting a nutation-free ayanamsha from a nutation-including tropical
 longitude leaves a small residual exactly equal to the nutation in
 longitude itself (confirmed directly: astronomy-engine's own
 `e_tilt().dpsi` at the verification instant is +10.88″, matching the
-measured ≈10.8″ gap between this module's sidereal Sun and Swiss
-Ephemeris's `SEFLG_SIDEREAL` output almost exactly). This is a real,
+measured ≈11.15″ gap between this module's production-path sidereal Sun
+and Swiss Ephemeris's `SEFLG_SIDEREAL` output to within +0.28″ — and
+matching an isolated ayanamsha-only comparison, using Swiss Ephemeris's
+own tropical Sun on both sides, to within -0.08″). This is a real,
 well-understood, honestly-disclosed *convention* difference (mean vs.
 apparent equinox handling in the subtraction) — not a planetary-
 ephemeris error and not an ayanamsha-value error — and it is exactly why
@@ -1581,18 +1594,103 @@ Foundation, Lagna, a Navagraha table, and per-Graha detail cards) was
 added, additional to the existing Western/Classical sections — no
 dignity/strength/benefic/malefic language anywhere.
 
-New `chart.vedic.meta` fields: `vedicSystem: "jyotish"`, `zodiacType:
+New `chart.vedic.meta` fields (refined during the pre-lock audit below —
+see that subsection for why): `vedicSystem: "jyotish"`, `zodiacType:
 "sidereal"`, `ayanamsha: "lahiri"`, `ayanamshaImplementation:
-"lahiri_chitrapaksha_mean_iau2006_precession"`, `vedicNodeType: "mean"`,
-`grahaSet: "navagraha"`, `rashiSystem: "12_equal_30_degree_signs"`,
-`bhavaSystem: "not_yet_implemented"`, `nakshatraSystem:
-"not_yet_implemented"`, `vedicInterpretation: "none"`.
+"lahiri_mean_no_nutation_iau2006_precession_calibrated_to_swiss_ephemeris_mean_ayanamsha"`,
+`ayanamshaIncludesNutation: false`, `siderealConversion:
+"tropical_longitude_minus_mean_lahiri_ayanamsha"`,
+`externalVerification: "swiss_ephemeris_dev_only_not_production"`,
+`vedicNodeType: "mean"`, `grahaSet: "navagraha"`, `rashiSystem:
+"12_equal_30_degree_signs"`, `bhavaSystem: "not_yet_implemented"`,
+`nakshatraSystem: "not_yet_implemented"`, `vedicInterpretation: "none"`.
 
 Zero new production dependencies, zero network calls (the temporary,
 dev-only Swiss Ephemeris and Playwright UI checks were both fully
 uninstalled immediately after use, per this project's established
-pattern). All 385 tests pass (354 carried over from Phase 1–3H
-unchanged, plus 31 new Phase 4A tests).
+pattern). All 391 tests pass (354 carried over from Phase 1–3H
+unchanged, plus 31 original Phase 4A tests, plus 6 new pre-lock audit
+tests — see below).
+
+### 19.1 Pre-lock audit: precise ayanamsha quantity & reconciliation of the ~11″ gap
+
+Before locking Phase 4A, a focused audit re-verified — with concrete,
+reproducible numbers rather than qualitative wording — exactly which
+Swiss Ephemeris quantity this module was calibrated against, whether
+that quantity includes nutation, and exactly what accounts for the ~11″
+difference against Swiss Ephemeris's full sidereal pipeline mentioned
+above. No formula, constant, or computed chart position changed as a
+result — only documentation, naming, and metadata were refined; the
+underlying `AYANAMSHA_AT_J2000_DEGREES` constant is bit-for-bit
+unchanged.
+
+- **Exact function used for the original calibration**: `swe.swe_get_ayanamsa_ut(tjd_ut)`,
+  confirmed identical (to sub-milliarcsecond precision) to
+  `swe.swe_get_ayanamsa(tjd_et)` and to `swe.swe_get_ayanamsa_ex_ut(tjd_ut, SEFLG_SWIEPH | SEFLG_NONUT)`.
+  This value is the **mean** (nutation-excluded) ayanamsha — confirmed
+  empirically, not merely from documentation: the same `ex_ut` call
+  *without* `SEFLG_NONUT` returns a different, larger value (by an
+  amount matching the nutation in longitude at that instant almost
+  exactly).
+
+- **1956-03-21 00:00 TT reference check** (Part C): the commonly-quoted
+  "23°15′00.658″" figure (the 1985 refinement of the original 1956
+  Calendar Reform Committee decree) turns out to be the **true**
+  (nutation-*including*) Chitrapaksha value, not the mean one this
+  module implements. At that instant, this module's production formula
+  evaluates to **23°14′44.02″**, a difference of **-16.64″** from the
+  quoted figure. Swiss Ephemeris's own mean function
+  (`swe_get_ayanamsa`) evaluates to the *same* 23°14′44.02″ at that
+  instant — the identical -16.64″ gap — while Swiss Ephemeris's
+  nutation-*including* call (`swe_get_ayanamsa_ex_ut` without
+  `SEFLG_NONUT`) evaluates to 23°15′00.80″, within **0.14″** of the
+  quoted reference. This confirms the gap is a difference in *which
+  quantity* is being compared, not a calibration error: this module's
+  mean ayanamsha matches Swiss Ephemeris's own mean ayanamsha at 1956 to
+  a fraction of an arcsecond, exactly as it does at every other tested
+  date, even though 1956 was never part of the calibration.
+
+- **Quantitative decomposition of the ~11″ sidereal-longitude gap**
+  (Part E), measured directly at the locked verification instant (Sun):
+  production path (astronomy-engine tropical longitude minus this
+  module's ayanamsha, vs. Swiss Ephemeris's `SEFLG_SIDEREAL` Sun):
+  `differenceSiderealArcsec = +11.15″`, `nutationLongitudeArcsec`
+  (astronomy-engine's own `e_tilt().dpsi`) `= +10.88″`,
+  `residualArcsec = +0.28″`. Isolating the ayanamsha/nutation effect
+  alone (Swiss Ephemeris's own tropical Sun on both sides, removing the
+  small, separately-documented planetary-ephemeris difference) tightens
+  this to `differenceSiderealArcsec = +10.79″`, `residualArcsec =
+  -0.08″`. Both reconciliations are well within a fraction of an
+  arcsecond of the nutation-in-longitude value itself — this
+  substantially reconciles, and is not an unresolved discrepancy.
+
+- **Refined metadata** — three new `chart.vedic.meta` fields make the
+  quantity and its limitation explicit rather than implied:
+  `ayanamshaIncludesNutation: false`, `siderealConversion:
+  "tropical_longitude_minus_mean_lahiri_ayanamsha"`,
+  `externalVerification: "swiss_ephemeris_dev_only_not_production"`. The
+  `ayanamshaImplementation` string was renamed from
+  `"lahiri_chitrapaksha_mean_iau2006_precession"` to
+  `"lahiri_mean_no_nutation_iau2006_precession_calibrated_to_swiss_ephemeris_mean_ayanamsha"`
+  to state precisely what is (and is not) claimed — Swiss Ephemeris is
+  never claimed to be the production engine, and its full sidereal
+  pipeline is never claimed to be reproduced.
+
+- **Traceability preserved** (Part G): `normalize360(tropicalLongitude -
+  ayanamshaDegrees) === siderealLongitude` remains exactly true for
+  every Graha and for Lagna, by construction and by dedicated test — no
+  hidden correction was introduced to paper over the ~11″ pipeline
+  difference; it is documented instead.
+
+- **No change** to any computed chart position, to the Rahu/Ketu mean-
+  node convention, to the Navagraha architecture, or to any production
+  dependency. Six new tests were added (`AUDIT TEST 26`–`31` in
+  `vedicChart.test.js`) covering the 1956 reference comparison, the
+  explicit nutation-inclusion metadata, exact sidereal-conversion
+  reconciliation, documentation of the ~11″ external-verification gap,
+  absence of any production Swiss Ephemeris dependency, and Western/
+  Classical output remaining byte-for-byte unchanged. All 391 tests
+  (385 prior + 6 new) pass.
 
 ---
 

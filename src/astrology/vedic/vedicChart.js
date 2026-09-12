@@ -50,7 +50,14 @@
 import { normalizeDegrees } from "../zodiac.js";
 import { PLANET_BODIES, computeLongitudeAndSpeed } from "../planets.js";
 import { computeMeanNode, computeSouthNode } from "../nodes.js";
-import { computeLahiriAyanamsha, AYANAMSHA_FAMILY, AYANAMSHA_CONVENTION } from "./ayanamsha.js";
+import {
+  computeLahiriAyanamsha,
+  AYANAMSHA_FAMILY,
+  AYANAMSHA_CONVENTION,
+  AYANAMSHA_INCLUDES_NUTATION,
+  SIDEREAL_CONVERSION,
+  EXTERNAL_VERIFICATION,
+} from "./ayanamsha.js";
 import { getRashi } from "./rashi.js";
 
 export const NAVAGRAHA_ORDER = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"];
@@ -226,6 +233,9 @@ export function buildVedicChart({ chart, astroTime }) {
     zodiacType: "sidereal",
     ayanamsha: AYANAMSHA_FAMILY,
     ayanamshaImplementation: AYANAMSHA_CONVENTION,
+    ayanamshaIncludesNutation: AYANAMSHA_INCLUDES_NUTATION,
+    siderealConversion: SIDEREAL_CONVERSION,
+    externalVerification: EXTERNAL_VERIFICATION,
     vedicNodeType: VEDIC_NODE_TYPE,
     grahaSet: "navagraha",
     rashiSystem: "12_equal_30_degree_signs",
