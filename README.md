@@ -3312,7 +3312,7 @@ The Classical maternal natural significator remains intentionally
 
 ---
 
-## 27. Phase 7: Manual Interpretation Workspace & Case Notes — IMPLEMENTED, PENDING AUDIT/LOCK
+## 27. Phase 7: Manual Interpretation Workspace & Case Notes — LOCKED
 
 **Purpose**: Phase 7 is NOT a calculation phase and NOT an interpretation
 phase. It is a Case-management and note-taking layer on top of the
@@ -3592,6 +3592,25 @@ a content hash of the actual rule tables - a stronger guarantee than
 "remember to bump a constant" was identified during the pre-lock audit
 as a possible future improvement but was not built, to avoid adding
 complexity beyond what the audit required.
+
+**LOCKED baseline** (final review passed, three pre-lock audit gaps
+fixed and verified): 848 passing tests, 36 test files, 0 failures,
+production build passing, responsive verification passed at 390px/
+430px/768px/1400px with zero console errors and zero page-level
+horizontal overflow. Repository contract is fully async-compatible
+(`caseRepository`/`notesRepository` public methods are Promise-
+returning end-to-end, with no UI consumer reading a result as an
+already-resolved value); the chart fingerprint uses the `fp2_` payload
+(`birthData` + `calculationProfile` + `calculationVersionProfile`,
+where `calculationVersionProfile` carries `astrologyCalculationGeneration`
+- currently `"astrology_calculation_generation_v1"` - and
+`topicRetrievalVersion`); Edit Case is reachable from Case Overview and
+preserves `caseId` while a new `chartFingerprint` starts a clean,
+blank note history; every locked Phase 6 boundary (source-of-truth,
+Parents conventions, Inner Shadow framing, manual-only interpretation)
+remains intact and enforced by dedicated test. Final audited commit:
+`417f0b397df102f8168090da92284a265c23ecf4` on
+`claude/astrology-workspace-phase-1-l2b9uf`.
 
 ---
 
