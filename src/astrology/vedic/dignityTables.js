@@ -76,6 +76,56 @@
  * Moolatrikona, the end degree belongs to the next dignity zone.
  *
  * ====================================================================
+ * PRE-LOCK AUDIT: TEXTUAL WORDING VS. COMPUTATIONAL INTERVAL
+ * ====================================================================
+ * Before locking Phase 4D, a focused audit re-examined Moon's "4-30"
+ * and Mercury's "16-20" specifically for a subtle, real bug: the "4"
+ * and "16" in those textual labels are ORDINAL degree-numbering from the
+ * source texts (as in "from the 4th degree", i.e. the degree-band
+ * running 3-4, not the cardinal number 4.0 itself) - a well-known
+ * translation ambiguity for exactly the two planets whose Moolatrikona
+ * sits inside their own exaltation sign, immediately after the single,
+ * measure-zero exact-exaltation point (3 Taurus for Moon, 15 Virgo for
+ * Mercury). The ORIGINAL code (before this audit) used the cardinal
+ * reading literally - `startDegree: 4` for Moon, `startDegree: 16` for
+ * Mercury - which left a genuine, empirically-confirmed one-degree band
+ * (3d00m01s-3d59m59s Taurus for Moon; 15d00m01s-15d59m59s Virgo for
+ * Mercury) where `isMoolatrikona` was `false` despite the planet already
+ * being past its own exact exaltation point and still inside its
+ * exaltation sign - an artificial, undoctrinal gap, not a deliberately
+ * sourced one (no source ever discussed or defended sub-degree
+ * granularity; every source's "4" and "16" were whole-degree ordinal
+ * labels, never floating-point interval boundaries).
+ *
+ * RESOLVED (audit): the COMPUTATIONAL `startDegree` for both is now the
+ * exact exaltation degree itself - Moon 3, Mercury 15 - making
+ * Moolatrikona a CONTINUOUS half-open interval immediately following the
+ * single exact-exaltation point, with no unclassified band:
+ *
+ *   Moon:    Moolatrikona = Taurus [3, 30)   (was incorrectly [4, 30))
+ *   Mercury: Moolatrikona = Virgo  [15, 20)  (was incorrectly [16, 20))
+ *
+ * The TRADITIONAL TEXTUAL wording ("4th degree onward / 4-30" for Moon,
+ * "16th degree onward / 16-20" for Mercury) is preserved verbatim as
+ * each entry's `textLabel` below - only the COMPUTATIONAL boundary
+ * changed. This distinction is also named explicitly in metadata (see
+ * `MOOLATRIKONA_BOUNDARY_CONVENTION` below) so the two are never
+ * conflated again. No other Moolatrikona entry needed this fix: the
+ * other five planets' Moolatrikona zones start at 0 degrees of their
+ * OWN sign (not their exaltation sign), so there is no adjacent
+ * exact-exaltation point to create an ordinal/cardinal ambiguity there.
+ *
+ * This fix does NOT change `exactExaltationLongitudeSidereal` (still a
+ * single point, per Part C) or `rashiDignityStatus` for any placement in
+ * this project's locked verification chart - Moon (Gemini) and Mercury
+ * (Libra) are nowhere near Taurus/Virgo in that chart - and does not
+ * change `rashiDignityStatus` for ANY placement anywhere, since
+ * `isExaltedSign` already covers the whole exaltation sign and already
+ * outranks `isMoolatrikona` in the display precedence below; only the
+ * independently-stored `isMoolatrikona` boolean itself changes for the
+ * narrow 1-degree bands identified above.
+ *
+ * ====================================================================
  * DIGNITY PRECEDENCE (Part F) — for the single `rashiDignityStatus` display field
  * ====================================================================
  * Multiple sources consistently describe the same strength ordering
@@ -124,6 +174,8 @@
 export const DIGNITY_SYSTEM = "parashari_baseline";
 export const EXALTATION_CONVENTION = "parashari_standard_exact_degrees";
 export const MOOLATRIKONA_CONVENTION = "bphs_critical_edition";
+/** How the textual (ordinal, whole-degree) Moolatrikona wording maps to a continuous computational interval — see the pre-lock audit note above. */
+export const MOOLATRIKONA_BOUNDARY_CONVENTION = "continuous_half_open_from_exact_exaltation_degree";
 export const NATURAL_FRIENDSHIP_CONVENTION = "naisargika_maitri_bphs";
 export const COMBUSTION_CONVENTION = "bphs_phaladeepika_per_planet_orb";
 export const RAHU_KETU_DIGNITY_STATUS = "not_assigned_due_to_traditional_variance";
@@ -152,15 +204,22 @@ export const EXALTATION = {
   saturn: { rashiKey: "libra", exactDegree: 20 },
 };
 
-/** Moolatrikona sign + half-open degree range (Part E) — see module doc comment for the two resolved disagreements. */
+/**
+ * Moolatrikona sign + half-open degree range (Part E) — see module doc
+ * comment for the two resolved disagreements AND the pre-lock audit that
+ * corrected Moon's/Mercury's COMPUTATIONAL `startDegree` to match the
+ * exact exaltation degree exactly (continuous, no gap), while `textLabel`
+ * preserves each entry's traditional ordinal-degree wording verbatim -
+ * the two are deliberately different for Moon and Mercury only.
+ */
 export const MOOLATRIKONA = {
-  sun: { rashiKey: "leo", startDegree: 0, endDegree: 20 },
-  moon: { rashiKey: "taurus", startDegree: 4, endDegree: 30 },
-  mars: { rashiKey: "aries", startDegree: 0, endDegree: 12 },
-  mercury: { rashiKey: "virgo", startDegree: 16, endDegree: 20 },
-  jupiter: { rashiKey: "sagittarius", startDegree: 0, endDegree: 10 },
-  venus: { rashiKey: "libra", startDegree: 0, endDegree: 15 },
-  saturn: { rashiKey: "aquarius", startDegree: 0, endDegree: 20 },
+  sun: { rashiKey: "leo", startDegree: 0, endDegree: 20, textLabel: "0-20" },
+  moon: { rashiKey: "taurus", startDegree: 3, endDegree: 30, textLabel: "4-30" },
+  mars: { rashiKey: "aries", startDegree: 0, endDegree: 12, textLabel: "0-12" },
+  mercury: { rashiKey: "virgo", startDegree: 15, endDegree: 20, textLabel: "16-20" },
+  jupiter: { rashiKey: "sagittarius", startDegree: 0, endDegree: 10, textLabel: "0-10" },
+  venus: { rashiKey: "libra", startDegree: 0, endDegree: 15, textLabel: "0-15" },
+  saturn: { rashiKey: "aquarius", startDegree: 0, endDegree: 20, textLabel: "0-20" },
 };
 
 /** Precedence for the single display field `rashiDignityStatus` (Part F), strongest first. */

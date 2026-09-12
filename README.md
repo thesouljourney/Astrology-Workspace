@@ -2035,9 +2035,12 @@ second, independently-sourced table; confirmed by dedicated test for
 every Graha.
 
 **Moolatrikona** (`bphs_critical_edition`, half-open `[start, end)` —
-matching this project's Phase 4C boundary-policy precedent):
+matching this project's Phase 4C boundary-policy precedent). The table
+below shows the traditional textual (ordinal whole-degree) wording; see
+§22.1 for the audited computational boundary, which differs from this
+wording for Moon and Mercury only:
 
-| Graha | Sign | Range |
+| Graha | Sign | Textual Range |
 |---|---|---|
 | Sun | Leo | 0°–20° |
 | Moon | Taurus | 4°–30° |
@@ -2173,6 +2176,68 @@ tests pass (469 carried over from Phase 1–4C unchanged, plus 51 new
 Phase 4D tests, one existing Phase 4A test split into two to separate
 the still-banned interpretive vocabulary from Phase 4D's own newly-
 approved technical terms).
+
+### 22.1 Pre-lock audit: Moolatrikona computational boundary for Moon/Mercury
+
+Before locking Phase 4D, a focused audit re-examined Moon's and
+Mercury's Moolatrikona for a subtle, real bug distinct from the two
+convention CHOICES made during initial research (§22): the "4" and "16"
+in "4°–30°" (Moon) and "16°–20°" (Mercury) are ordinal, whole-degree
+textual wording from the source texts, not necessarily the literal
+computational boundary. The ORIGINAL code used the cardinal reading
+literally (`startDegree: 4` / `16`), which left a genuine,
+empirically-confirmed one-degree band — Taurus 3°00′01″–3°59′59″ for
+Moon, Virgo 15°00′01″–15°59′59″ for Mercury — where `isMoolatrikona` was
+`false` despite the planet already being past its own exact exaltation
+point (3° Taurus / 15° Virgo) and still inside its exaltation sign. No
+source ever discussed or defended sub-degree granularity here; every
+source's "4" and "16" were whole-degree ordinal labels, never
+floating-point interval boundaries, so this gap was artificial, not
+doctrinal.
+
+**Audit findings** (all 12 required points classified against the
+pre-audit code): for both Moon (Taurus) and Mercury (Virgo), every one
+of the six audited points — X°59′59″ just before the exact exaltation
+degree, exactly at it, one second after it, at the half-degree, at
+X+1°−1″, and exactly at X+1° — showed `isExaltedSign: true` throughout
+(a whole-sign dignity), so `rashiDignityStatus` was `"exaltation"` at
+every single point, before AND after this fix — the display output
+never changed. Only the independently-stored `isMoolatrikona` boolean
+had the gap: `false` for all points strictly between the exact
+exaltation degree and the next whole degree, `true` only from the next
+whole degree onward.
+
+**Resolution**: the COMPUTATIONAL `startDegree` for both is now the
+exact exaltation degree itself, making Moolatrikona a continuous
+half-open interval with no unclassified band:
+
+| Graha | Traditional Textual Wording | Computational Interval (audited) |
+|---|---|---|
+| Moon | "4°–30°" (Taurus) | Taurus **[3°, 30°)** |
+| Mercury | "16°–20°" (Virgo) | Virgo **[15°, 20°)** |
+
+The traditional textual wording is preserved verbatim as each
+Moolatrikona table entry's new `textLabel` field — only the
+computational boundary changed. No other Moolatrikona entry needed this
+fix: the other five planets' zones start at 0° of their own sign (not
+their exaltation sign), so there is no adjacent exact-exaltation point
+to create this ordinal/cardinal ambiguity. `exactExaltationLongitudeSidereal`
+remains exactly what it always was — a single point, confirmed
+unchanged and unwidened by dedicated test.
+
+New metadata: `moolatrikonaBoundaryConvention:
+"continuous_half_open_from_exact_exaltation_degree"` (added to both
+`chart.vedic.meta` and `chart.vedic.condition.meta`), distinguishing
+this computational-boundary policy from `moolatrikonaConvention:
+"bphs_critical_edition"` (which continues to name the underlying
+source/table convention, textual wording included).
+
+**No verification-chart change**: the locked verification chart's Moon
+(Gemini) and Mercury (Libra) are nowhere near Taurus/Virgo, so this
+audit changes nothing about that chart's output — confirmed by dedicated
+test comparing before/after. Six new tests were added covering all 12
+audited points plus the exact-point/no-widening and metadata checks. All
+527 tests pass (521 prior + 6 new). Phase 4D can now be safely locked.
 
 ---
 

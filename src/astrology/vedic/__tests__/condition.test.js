@@ -133,15 +133,15 @@ describe("TEST 6: debilitation point exactly 180 degrees opposite exaltation", (
 });
 
 describe("TEST 7: Moolatrikona table matches selected convention", () => {
-  it("matches the researched-and-approved bphs_critical_edition ranges exactly", () => {
+  it("matches the researched-and-approved bphs_critical_edition ranges exactly, with the audited continuous computational boundary for Moon/Mercury (see AUDIT tests below)", () => {
     expect(MOOLATRIKONA).toEqual({
-      sun: { rashiKey: "leo", startDegree: 0, endDegree: 20 },
-      moon: { rashiKey: "taurus", startDegree: 4, endDegree: 30 },
-      mars: { rashiKey: "aries", startDegree: 0, endDegree: 12 },
-      mercury: { rashiKey: "virgo", startDegree: 16, endDegree: 20 },
-      jupiter: { rashiKey: "sagittarius", startDegree: 0, endDegree: 10 },
-      venus: { rashiKey: "libra", startDegree: 0, endDegree: 15 },
-      saturn: { rashiKey: "aquarius", startDegree: 0, endDegree: 20 },
+      sun: { rashiKey: "leo", startDegree: 0, endDegree: 20, textLabel: "0-20" },
+      moon: { rashiKey: "taurus", startDegree: 3, endDegree: 30, textLabel: "4-30" },
+      mars: { rashiKey: "aries", startDegree: 0, endDegree: 12, textLabel: "0-12" },
+      mercury: { rashiKey: "virgo", startDegree: 15, endDegree: 20, textLabel: "16-20" },
+      jupiter: { rashiKey: "sagittarius", startDegree: 0, endDegree: 10, textLabel: "0-10" },
+      venus: { rashiKey: "libra", startDegree: 0, endDegree: 15, textLabel: "0-15" },
+      saturn: { rashiKey: "aquarius", startDegree: 0, endDegree: 20, textLabel: "0-20" },
     });
   });
 });
@@ -158,22 +158,107 @@ describe("TEST 8: Moolatrikona boundary policy explicit (half-open [start, end))
     expect(justBelowEnd.planets.sun.dignity.isMoolatrikona).toBe(true);
   });
 
-  it("Mercury's 16-20 Virgo Moolatrikona: 15.9999 is excluded, 16.0 is included", () => {
+  it("Mercury's audited [15, 20) Virgo Moolatrikona: 14.9999 is excluded, 15.0 (the exact exaltation degree itself) is included - no gap", () => {
     const virgoIndex = RASHIS.find((r) => r.key === "virgo").index;
-    const justBelow = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 15.9999) }) });
+    const justBelow = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 14.9999) }) });
     expect(justBelow.planets.mercury.dignity.isMoolatrikona).toBe(false);
-    const atStart = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 16) }) });
+    const atStart = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, 15) }) });
     expect(atStart.planets.mercury.dignity.isMoolatrikona).toBe(true);
   });
 
-  it("Moon's 4-30 Taurus Moolatrikona: 3.9999 is excluded, 4.0 is included, and it extends all the way to (but not past) the sign end", () => {
+  it("Moon's audited [3, 30) Taurus Moolatrikona: 2.9999 is excluded, 3.0 (the exact exaltation degree itself) is included - no gap - and it extends all the way to (but not past) the sign end", () => {
     const taurusIndex = RASHIS.find((r) => r.key === "taurus").index;
-    const justBelow = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 3.9999) }) });
+    const justBelow = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 2.9999) }) });
     expect(justBelow.planets.moon.dignity.isMoolatrikona).toBe(false);
-    const atStart = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 4) }) });
+    const atStart = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 3) }) });
     expect(atStart.planets.moon.dignity.isMoolatrikona).toBe(true);
     const nearSignEnd = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 29.9999) }) });
     expect(nearSignEnd.planets.moon.dignity.isMoolatrikona).toBe(true);
+  });
+});
+
+describe("PRE-LOCK AUDIT: no artificial one-degree gap after the exact exaltation point (Moon/Mercury)", () => {
+  function dms(d, m, s) {
+    return d + m / 60 + s / 3600;
+  }
+
+  it("Moon in Taurus at the 6 audited points: 2d59m59s, 3d00m00s, 3d00m01s, 3d30m00s, 3d59m59s, 4d00m00s", () => {
+    const taurusIndex = RASHIS.find((r) => r.key === "taurus").index;
+    const points = [
+      { label: "2d59m59s", deg: dms(2, 59, 59) },
+      { label: "3d00m00s", deg: dms(3, 0, 0) },
+      { label: "3d00m01s", deg: dms(3, 0, 1) },
+      { label: "3d30m00s", deg: dms(3, 30, 0) },
+      { label: "3d59m59s", deg: dms(3, 59, 59) },
+      { label: "4d00m00s", deg: dms(4, 0, 0) },
+    ];
+    for (const { label, deg } of points) {
+      const r = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, deg) }) }).planets.moon;
+      // Every one of the 6 points is inside Taurus, Moon's exaltation sign -
+      // isExaltedSign is a whole-sign dignity, so it is true throughout.
+      expect(r.dignity.isExaltedSign).toBe(true);
+      expect(r.dignity.isOwnSign).toBe(false); // Moon's own sign is Cancer, never Taurus
+      // The display status is always "exaltation" throughout the whole sign
+      // regardless of Moolatrikona, per the documented precedence - this was
+      // true before AND after the audit fix, for every one of these 6 points.
+      expect(r.dignity.rashiDignityStatus).toBe("exaltation");
+      // isMoolatrikona is now true from the exact exaltation degree (3.0) onward -
+      // no point at or after 3d00m00s should ever be excluded (label !== "2d59m59s").
+      expect(r.dignity.isMoolatrikona).toBe(label !== "2d59m59s");
+    }
+  });
+
+  it("Mercury in Virgo at the 6 audited points: 14d59m59s, 15d00m00s, 15d00m01s, 15d30m00s, 15d59m59s, 16d00m00s", () => {
+    const virgoIndex = RASHIS.find((r) => r.key === "virgo").index;
+    const points = [
+      { label: "14d59m59s", deg: dms(14, 59, 59) },
+      { label: "15d00m00s", deg: dms(15, 0, 0) },
+      { label: "15d00m01s", deg: dms(15, 0, 1) },
+      { label: "15d30m00s", deg: dms(15, 30, 0) },
+      { label: "15d59m59s", deg: dms(15, 59, 59) },
+      { label: "16d00m00s", deg: dms(16, 0, 0) },
+    ];
+    for (const { label, deg } of points) {
+      const r = buildVedicCondition({ grahas: fakeGrahas({ mercury: fakeGraha(virgoIndex, deg) }) }).planets.mercury;
+      // Virgo is simultaneously Mercury's OWN sign and its exaltation sign -
+      // both are whole-sign dignities and both are true throughout.
+      expect(r.dignity.isExaltedSign).toBe(true);
+      expect(r.dignity.isOwnSign).toBe(true);
+      expect(r.dignity.rashiDignityStatus).toBe("exaltation"); // outranks own_sign too
+      expect(r.dignity.isMoolatrikona).toBe(label !== "14d59m59s");
+    }
+  });
+
+  it("exactExaltationLongitudeSidereal stays a single point (never widened into a range) for both Moon and Mercury", () => {
+    expect(EXALTATION.moon.exactDegree).toBe(3);
+    expect(EXALTATION.mercury.exactDegree).toBe(15);
+    // distanceFromExactExaltationDegrees is exactly 0 only at the single exact point, not across a range.
+    const taurusIndex = RASHIS.find((r) => r.key === "taurus").index;
+    const atExact = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 3) }) });
+    expect(atExact.planets.moon.dignity.distanceFromExactExaltationDegrees).toBeCloseTo(0, 9);
+    const oneDegreeAway = buildVedicCondition({ grahas: fakeGrahas({ moon: fakeGraha(taurusIndex, 4) }) });
+    expect(oneDegreeAway.planets.moon.dignity.distanceFromExactExaltationDegrees).toBeCloseTo(1, 9);
+  });
+
+  it("traditional textual wording is preserved verbatim even though the computational boundary changed", () => {
+    expect(MOOLATRIKONA.moon.textLabel).toBe("4-30");
+    expect(MOOLATRIKONA.mercury.textLabel).toBe("16-20");
+    expect(MOOLATRIKONA.moon.startDegree).toBe(3);
+    expect(MOOLATRIKONA.mercury.startDegree).toBe(15);
+  });
+
+  it("the verification chart's own Moon (Gemini) and Mercury (Libra) are unaffected - this audit changes nothing about the locked verification chart", () => {
+    const { grahas, condition } = chart().vedic;
+    expect(grahas.moon.rashi).toBe("Gemini");
+    expect(grahas.mercury.rashi).toBe("Libra");
+    expect(condition.planets.moon.dignity.isMoolatrikona).toBe(false);
+    expect(condition.planets.mercury.dignity.isMoolatrikona).toBe(false);
+  });
+
+  it("chart.vedic.meta.moolatrikonaBoundaryConvention names the audited continuous boundary policy", () => {
+    const chartResult = chart();
+    expect(chartResult.vedic.meta.moolatrikonaBoundaryConvention).toBe("continuous_half_open_from_exact_exaltation_degree");
+    expect(chartResult.vedic.condition.meta.moolatrikonaBoundaryConvention).toBe("continuous_half_open_from_exact_exaltation_degree");
   });
 });
 

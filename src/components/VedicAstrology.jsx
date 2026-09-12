@@ -164,6 +164,10 @@ export default function VedicAstrology({ chart }) {
             <td className="meta-cell">{meta.moolatrikonaConvention}</td>
           </tr>
           <tr>
+            <td>Moolatrikona Boundary｜Moolatrikona 边界规则</td>
+            <td className="meta-cell">{meta.moolatrikonaBoundaryConvention}</td>
+          </tr>
+          <tr>
             <td>Natural Friendship Convention｜自然关系依据</td>
             <td className="meta-cell">{meta.naturalFriendshipConvention}</td>
           </tr>
