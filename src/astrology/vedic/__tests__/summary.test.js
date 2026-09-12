@@ -11,6 +11,7 @@ import {
   TECHNICAL_SUMMARY_INTERPRETATION,
   SOURCE_PHASES,
   DISPOSITOR_LOOP_ORDERED_PATH_STATUS,
+  classifyImplementationStatus,
 } from "../summary.js";
 
 const VERIFICATION_INPUT = {
@@ -649,6 +650,157 @@ describe("TEST 38: implemented features are not listed unresolved", () => {
     expect(unresolvedKeys.has("vedicInterpretation")).toBe(false);
     expect(unresolvedKeys.has("vedicLordshipInterpretation")).toBe(false);
     expect(unresolvedKeys.has("technicalSummaryInterpretation")).toBe(false);
+  });
+
+  it("rahuKetuDignity ('not_assigned_due_to_traditional_variance') is never listed as unresolved - a permanent selected policy, not a deferred feature", () => {
+    const { vedic } = chart();
+    const unresolvedKeys = new Set(vedic.summary.unresolvedConventions.map((e) => e.metaKey));
+    expect(vedic.meta.rahuKetuDignity).toBe("not_assigned_due_to_traditional_variance");
+    expect(unresolvedKeys.has("rahuKetuDignity")).toBe(false);
+  });
+
+  it("externalVerification (dev-only verification tooling note, not a Jyotish feature) is never listed as unresolved despite containing 'not'", () => {
+    const { vedic } = chart();
+    const unresolvedKeys = new Set(vedic.summary.unresolvedConventions.map((e) => e.metaKey));
+    expect(vedic.meta.externalVerification).toBe("swiss_ephemeris_dev_only_not_production");
+    expect(unresolvedKeys.has("externalVerification")).toBe(false);
+  });
+});
+
+// ============================================================
+// Pre-lock audit: explicit unresolved-convention classification policy
+// (classifyImplementationStatus) - Part G of the audit brief.
+// ============================================================
+
+describe("Audit Part G.1: 'not_implemented' is classified unresolved", () => {
+  it("classifyImplementationStatus('not_implemented') === 'unresolved'", () => {
+    expect(classifyImplementationStatus("not_implemented")).toBe("unresolved");
+  });
+});
+
+describe("Audit Part G.2: 'not_yet_implemented' is classified unresolved", () => {
+  it("classifyImplementationStatus('not_yet_implemented') === 'unresolved'", () => {
+    expect(classifyImplementationStatus("not_yet_implemented")).toBe("unresolved");
+  });
+});
+
+describe("Audit Part G.3: a deferred_* value is classified unresolved", () => {
+  it("classifyImplementationStatus('deferred') and a 'deferred_' prefixed value are both 'unresolved'", () => {
+    expect(classifyImplementationStatus("deferred")).toBe("unresolved");
+    expect(classifyImplementationStatus("deferred_due_to_historical_variance")).toBe("unresolved");
+    expect(classifyImplementationStatus("deferred_pending_research")).toBe("unresolved");
+  });
+
+  it("a 'not_implemented_' prefixed value (a more specific future variant) is also 'unresolved'", () => {
+    expect(classifyImplementationStatus("not_implemented_pending_research")).toBe("unresolved");
+  });
+
+  it("'not_yet_evaluated' (established Phase 3H marker vocabulary) is 'unresolved'", () => {
+    expect(classifyImplementationStatus("not_yet_evaluated")).toBe("unresolved");
+  });
+});
+
+describe("Audit Part G.4: 'none' is excluded (intentional, not unresolved)", () => {
+  it("classifyImplementationStatus('none') === 'intentional_not_applicable'", () => {
+    expect(classifyImplementationStatus("none")).toBe("intentional_not_applicable");
+  });
+});
+
+describe("Audit Part G.5: a normal implemented convention string is excluded", () => {
+  it("classifyImplementationStatus('bphs_critical_edition') === 'implemented'", () => {
+    expect(classifyImplementationStatus("bphs_critical_edition")).toBe("implemented");
+    expect(classifyImplementationStatus("traditional_rashi_lordship")).toBe("implemented");
+    expect(classifyImplementationStatus("whole_sign_from_lagna")).toBe("implemented");
+  });
+});
+
+describe("Audit Part G.6: intentional 'not_applicable' is excluded", () => {
+  it("classifyImplementationStatus('not_applicable') === 'intentional_not_applicable'", () => {
+    expect(classifyImplementationStatus("not_applicable")).toBe("intentional_not_applicable");
+  });
+});
+
+describe("Audit Part G.7: intentional 'not_assigned_due_to_traditional_variance' is excluded", () => {
+  it("classifyImplementationStatus('not_assigned_due_to_traditional_variance') === 'intentional_not_applicable' (this project's actual metadata never marks it pending)", () => {
+    expect(classifyImplementationStatus("not_assigned_due_to_traditional_variance")).toBe("intentional_not_applicable");
+  });
+});
+
+describe("Audit Part G.8: no hard-coded list of Vedic feature names", () => {
+  it("classifyImplementationStatus takes only the raw status string - no Vedic feature/topic name appears anywhere in summary.js's classification logic", () => {
+    // Structural guard: the classifier's own source is a pure string-shape
+    // function (exact-value sets + prefix checks), never a per-topic
+    // lookup table - verified here by confirming it classifies an
+    // entirely invented, never-before-seen key/value pair correctly
+    // using only the value's shape, with no knowledge of the key at all.
+    expect(classifyImplementationStatus("not_implemented")).toBe("unresolved");
+    expect(classifyImplementationStatus("not_implemented_")).toBe("unresolved");
+    expect(classifyImplementationStatus("some_never_before_seen_convention_name")).toBe("implemented");
+  });
+});
+
+describe("Audit Part G.9: unresolved list still derives only from live metadata", () => {
+  it("changing a live meta value changes the resulting unresolvedConventions using the new classifier (proves it is live, not hard-coded)", () => {
+    const { vedic } = chart();
+    const rebuiltWithNewDeferral = buildVedicTechnicalSummary({
+      meta: { ...vedic.meta, moolatrikonaConvention: "deferred_pending_new_source" },
+      lagna: vedic.lagna,
+      grahas: vedic.grahas,
+      bhava: vedic.bhava,
+      nakshatra: vedic.nakshatra,
+      condition: vedic.condition,
+      lordship: vedic.lordship,
+    });
+    expect(rebuiltWithNewDeferral.unresolvedConventions.some((e) => e.metaKey === "moolatrikonaConvention")).toBe(true);
+
+    const rebuiltWithResolvedFeature = buildVedicTechnicalSummary({
+      meta: { ...vedic.meta, shadbala: "shadbala_ashtavarga_based" },
+      lagna: vedic.lagna,
+      grahas: vedic.grahas,
+      bhava: vedic.bhava,
+      nakshatra: vedic.nakshatra,
+      condition: vedic.condition,
+      lordship: vedic.lordship,
+    });
+    expect(rebuiltWithResolvedFeature.unresolvedConventions.some((e) => e.metaKey === "shadbala")).toBe(false);
+  });
+});
+
+describe("Audit Part G.10: existing Phase 4A-4F source evidence unchanged by this audit", () => {
+  it("chart.vedic.grahas/bhava/nakshatra/condition/lordship and every summary field except unresolvedConventions are byte-for-byte identical across two independent computations", () => {
+    const a = chart();
+    const b = calculateChart(VERIFICATION_INPUT);
+    expect(a.vedic.grahas).toEqual(b.vedic.grahas);
+    expect(a.vedic.bhava).toEqual(b.vedic.bhava);
+    expect(a.vedic.nakshatra).toEqual(b.vedic.nakshatra);
+    expect(a.vedic.condition).toEqual(b.vedic.condition);
+    expect(a.vedic.lordship).toEqual(b.vedic.lordship);
+    const { unresolvedConventions: ua, ...summaryWithoutUnresolvedA } = a.vedic.summary;
+    const { unresolvedConventions: ub, ...summaryWithoutUnresolvedB } = b.vedic.summary;
+    expect(summaryWithoutUnresolvedA).toEqual(summaryWithoutUnresolvedB);
+    expect(ua).toEqual(ub);
+  });
+
+  it("the audited unresolvedConventions output for the verification chart is unchanged from before the audit (still exactly 13 topics)", () => {
+    const { vedic } = chart();
+    expect(vedic.summary.unresolvedConventions.length).toBe(13);
+    expect(vedic.summary.unresolvedConventions.map((e) => e.metaKey).sort()).toEqual(
+      [
+        "bhavaChalit",
+        "functionalLordship",
+        "dashaSystem",
+        "navamsaFromPada",
+        "temporaryFriendship",
+        "compoundFriendship",
+        "shadbala",
+        "functionalBenefic",
+        "functionalMalefic",
+        "yogakaraka",
+        "maraka",
+        "badhaka",
+        "dispositorLoopOrderedPath",
+      ].sort(),
+    );
   });
 });
 

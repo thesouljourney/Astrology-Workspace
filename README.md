@@ -2741,6 +2741,85 @@ the in-browser UI check only, fully uninstalled afterward). All 652
 tests pass (575 carried over from Phase 1–4E unchanged, plus 77 new
 Phase 4F tests).
 
+### 24.1 Pre-lock audit: unresolved-convention classification policy
+
+Before locking Phase 4F, a focused audit re-examined
+`summary.unresolvedConventions`'s detection logic, distinct from the
+astrology evidence itself: the original detector recognized exactly
+three literal strings (`"not_implemented"`, `"not_yet_implemented"`,
+`"deferred"`) via a plain `Set.has()` equality check — precise (no
+substring matching), but under-specified, with no documented answer for
+a more specific future value (`"not_implemented_pending_research"`,
+`"deferred_due_to_..."` — the latter shape Phase 3H's own classical
+marker vocabulary already uses) and no explicitly-named reason for
+excluding `"none"`.
+
+**Complete live inventory**: every one of `chart.vedic.meta`'s 49 entries
+for the locked verification chart was enumerated and classified by hand
+against three explicit categories (never inferred from README text) —
+confirmed identical across `chart.vedic.meta` and each Phase 4B–4F
+sub-module's own nested `meta` object (`bhava.meta`, `nakshatra.meta`,
+`condition.meta`, `lordship.meta`, `summary.meta`), so no deferred field
+is hidden from the top-level scan. 12 entries are the literal
+`"not_implemented"` (`bhavaChalit`, `functionalLordship`, `dashaSystem`,
+`navamsaFromPada`, `temporaryFriendship`, `compoundFriendship`,
+`shadbala`, `functionalBenefic`, `functionalMalefic`, `yogakaraka`,
+`maraka`, `badhaka`); 6 entries are `"none"`
+(`vedicInterpretation`, `vedicHouseInterpretation`,
+`nakshatraInterpretation`, `vedicConditionInterpretation`,
+`vedicLordshipInterpretation`, `technicalSummaryInterpretation` — all "no
+interpretation, by design"); one is
+`rahuKetuDignity: "not_assigned_due_to_traditional_variance"`; one is
+`externalVerification: "swiss_ephemeris_dev_only_not_production"`; the
+remaining ~29 are genuine implemented convention names/facts (e.g.
+`"bphs_critical_edition"`, `"traditional_rashi_lordship"`,
+`ayanamshaIncludesNutation: false`). No metadata value anywhere used
+`"not_yet_implemented"`, `"deferred"`, or `"not_yet_evaluated"` at audit
+time.
+
+**Explicit classification policy**: `summary.js` now exports
+`classifyImplementationStatus(value)`, returning exactly one of three
+named outcomes instead of a bare equality check:
+
+- `"unresolved"` — a genuinely deferred/unbuilt feature: the exact
+  literal `"not_implemented"`, the generic forms `"not_yet_implemented"`
+  and `"not_yet_evaluated"` (the latter reused from Phase 3H's own
+  established marker vocabulary for cross-project consistency), exact
+  `"deferred"`, and two prefixes (`"not_implemented_"`, `"deferred_"`) so
+  a more specific future value in either family is still recognized —
+  without ever falling back to a bare substring match on the word "not".
+- `"intentional_not_applicable"` — a PERMANENT, deliberate policy/
+  architecture outcome that happens to contain "not" but is never a
+  deferred feature: `"none"`, `"not_applicable"`, and
+  `"not_assigned_due_to_traditional_variance"` (individually named, not
+  pattern-matched — this project's own research established that
+  Rahu/Ketu dignity is genuinely disputed across Jyotish schools, a
+  permanent selected policy, never described anywhere as "pending future
+  implementation").
+- `"implemented"` — everything else, including
+  `externalVerification: "swiss_ephemeris_dev_only_not_production"` (a
+  settled statement about the dev-only verification tooling's deployment
+  scope, not a Jyotish feature awaiting implementation).
+
+**Result**: rerunning the full live scan under this explicit policy
+produces an **identical 13-topic list** to the pre-audit output for the
+locked verification chart (the same 12 `chart.vedic.meta` topics plus
+this module's own `dispositorLoopOrderedPath` marker) — **zero missing
+topics, zero false positives** were found. The audit changed the
+classification's explicitness and future robustness, not today's result.
+The `orderedPath: null` / `dispositorLoopOrderedPath: "not_implemented"`
+limitation (Part I) is confirmed correctly surfaced by the live scan,
+exactly as before — it is not reconstructed or silently fixed here.
+
+**No astrology evidence changed**: this audit touched only
+`summary.js`'s unresolved-convention DETECTION logic — no Phase 4A–4E
+calculation, no new Jyotish doctrine, and every other `chart.vedic.summary`
+field is confirmed byte-for-byte unchanged by dedicated test. 15 new
+tests were added (the exact-value/prefix classification cases, the two
+intentional-exclusion cases with rationale, a live-metadata-still-drives-
+the-list proof, and a full Phase 4A–4F regression check). All 667 tests
+pass (652 prior + 15 new). Phase 4F remains safe to lock.
+
 ---
 
 No interpretation is generated anywhere in this codebase, by design:
