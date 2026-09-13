@@ -1,3 +1,5 @@
+import { formatDMS } from "../utils/formatDegree.js";
+
 const STATUS_LABEL = {
   implemented: "✓",
   notImplemented: "—",
@@ -35,6 +37,77 @@ const CATEGORY_LABEL = {
 
 const FAMILY_LABEL_FALLBACK = (family) => family.replace(/_/g, " ");
 
+/**
+ * Related Anchors — Targeted UX Refinement, Part 8B. A presentation-only
+ * addition over already-locked Phase 1 (`chart.angles.asc`) and Phase 4B
+ * (`chart.vedic.summary.chartOverview.lagna`) values - it computes
+ * nothing new. Deliberately does NOT label ASC as a celestial body, does
+ * NOT add it to this file's own "Shared Bodies" count above, and does
+ * NOT claim tropical ASC and sidereal Lagna are numerically equivalent -
+ * this file's own equivalence rules (Same Frame / Numerically Equivalent
+ * columns above) are unchanged and remain the authority.
+ */
+function RelatedAnchors({ chart }) {
+  const asc = chart.angles?.asc;
+  const lagna = chart.vedic?.summary?.chartOverview?.lagna;
+  if (!asc || !lagna) return null;
+
+  return (
+    <section className="related-anchors">
+      <h3>Related Anchors｜相关核心锚点</h3>
+      <p className="reception-note">
+        A presentation-only grouping of conceptually related chart anchors across systems — not a claim of numerical
+        equivalence｜跨体系概念相关锚点的展示分组 — 并非数值等价声明
+      </p>
+      <div className="table-scroll">
+        <table className="classical-table">
+          <thead>
+            <tr>
+              <th>System｜体系</th>
+              <th>Anchor｜锚点</th>
+              <th>Zodiac｜黄道</th>
+              <th>Value｜数值</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Modern Western｜现代西方</td>
+              <td>ASC｜上升</td>
+              <td>Tropical｜回归制</td>
+              <td>
+                {asc.sign.english} {formatDMS(asc.degreeInSign)}
+              </td>
+            </tr>
+            <tr>
+              <td>Classical｜古典</td>
+              <td>ASC｜上升</td>
+              <td>Tropical｜回归制</td>
+              <td>
+                {asc.sign.english} {formatDMS(asc.degreeInSign)}
+              </td>
+            </tr>
+            <tr>
+              <td>Vedic｜印度</td>
+              <td>Lagna｜上升点</td>
+              <td>Sidereal｜恒星制</td>
+              <td>
+                {lagna.rashi} {formatDMS(lagna.degreeInRashi)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="reception-note">
+        Conceptually Related｜概念相关 — Not Numerically Equivalent｜数值不可直接等同: same astronomical horizon point,
+        different zodiac frame and therefore a different resulting sign/degree - see "Shared Bodies" above for the
+        full, unchanged Phase 5 equivalence rules｜同一天文地平点，坐标系不同、结果星座/度数亦不同 — 完整且未变的 Phase 5
+        等价规则见上方"共同天体"
+      </p>
+    </section>
+  );
+}
+
+
 function StatusCell({ cell }) {
   return (
     <td title={STATUS_TITLE[cell.status]} className={cell.status === "implemented" ? "cs-implemented" : cell.status === "notApplicable" ? "cs-not-applicable" : "cs-not-implemented"}>
@@ -43,13 +116,16 @@ function StatusCell({ cell }) {
   );
 }
 
+/** Exported so "Shared Bodies never includes ASC" (Part 8.A) is directly testable without a React rendering harness - the 7 traditional shared classical planets only, never an angle. */
+export const SHARED_BODY_KEYS = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"];
+
 export default function CrossSystemEvidence({ chart }) {
   const { crossSystem } = chart;
   if (!crossSystem) return null;
 
   const { meta, systems, evidenceAvailability, bodyIdentities, conceptFamilies, comparisonGroups, nonEquivalentConcepts } = crossSystem;
 
-  const sharedBodyKeys = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"];
+  const sharedBodyKeys = SHARED_BODY_KEYS;
 
   return (
     <section className="cross-system-evidence">
@@ -160,6 +236,8 @@ export default function CrossSystemEvidence({ chart }) {
         Convention is "✓" (e.g. both selecting the Mean Node)｜本应用中西方/古典与印度的比较，"同一坐标系"（及"数值等价"）恒为
         "—"，因西方/古典恒为回归制、印度恒为恒星制 — 即使"同一算法"为"✓"（如双方皆选平交点）亦然
       </p>
+
+      <RelatedAnchors chart={chart} />
 
       <h3>Evidence Availability Matrix｜证据可用性矩阵</h3>
       <div className="table-scroll">

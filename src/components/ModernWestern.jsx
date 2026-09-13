@@ -97,45 +97,6 @@ export default function ModernWestern({ chart }) {
         );
       })}
 
-      <details className="raw-data">
-        <summary>Raw Calculation Data｜原始计算数据</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>id</th>
-              <th>category</th>
-              <th>absoluteLongitude</th>
-              <th>degreeInSign</th>
-              <th>house</th>
-              <th>speedLongitude</th>
-              <th>retrograde</th>
-              <th>sourceType</th>
-              <th>calculationMethod</th>
-              <th>calculationConvention</th>
-              <th>verificationDifferenceArcsec</th>
-              <th>meta (full)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {chart.points.map((p) => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td>{p.category}</td>
-                <td>{p.absoluteLongitude === null ? "null" : p.absoluteLongitude.toFixed(8)}</td>
-                <td>{p.degreeInSign === null ? "null" : p.degreeInSign.toFixed(8)}</td>
-                <td>{p.house ?? "null"}</td>
-                <td>{p.motion?.speedLongitude != null ? p.motion.speedLongitude.toFixed(6) : "null"}</td>
-                <td>{p.motion ? String(p.motion.retrograde) : "null"}</td>
-                <td>{p.sourceType ?? "null"}</td>
-                <td>{p.meta?.calculationMethod ?? "—"}</td>
-                <td>{p.meta?.calculationConvention ?? "—"}</td>
-                <td>{p.meta?.verificationDifferenceArcsec != null ? p.meta.verificationDifferenceArcsec : "—"}</td>
-                <td className="meta-cell">{JSON.stringify(p.meta)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
     </section>
   );
 }

@@ -1,67 +1,24 @@
-import { useState } from "react";
-import { calculateChart } from "./astrology/ephemeris.js";
-import { formatDMS } from "./utils/formatDegree.js";
-import { formatHouseLabel } from "./utils/houseLabel.js";
-import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
-import { BirthDataFields } from "./components/shared/BirthDataFields.jsx";
-import ChartMetaAndHouses from "./components/ChartMetaAndHouses.jsx";
-import ModernWestern from "./components/ModernWestern.jsx";
-import ClassicalAstrology from "./components/ClassicalAstrology.jsx";
-import VedicAstrology from "./components/VedicAstrology.jsx";
-import CrossSystemEvidence from "./components/CrossSystemEvidence.jsx";
-import TopicRetrieval from "./components/TopicRetrieval.jsx";
 import CaseWorkspace from "./components/caseWorkspace/CaseWorkspace.jsx";
 import "./App.css";
 
 /**
- * Production initial state (Production UX Refactor, Part 1): a fresh
- * Quick Calculator session always starts EMPTY. The project's golden
- * verification chart (1994-11-21 01:44, Batu Pahat) now lives ONLY in
- * test/fixture files (see `src/astrology/__tests__/verification.test.js`
- * and the caseWorkspace test fixtures) - never as a production default.
+ * Targeted UX Refinement: the standalone Quick Calculator is no longer a
+ * user-facing entry point. Cases is now the app's only top-level
+ * destination - "one person = one Case = one complete astrology
+ * workspace." The locked calculation engine (`calculateChart()` and
+ * everything under `src/astrology/`) is untouched and unchanged; Case
+ * creation/editing (`CaseManager.jsx`/`EditCaseForm.jsx`) already calls
+ * it via the existing `computeCaseChart()` bridge, exactly as before.
+ * The display components previously shown on the Quick Calculator page
+ * (`ModernWestern`/`ClassicalAstrology`/`VedicAstrology`/
+ * `CrossSystemEvidence`/`ChartMetaAndHouses`/shared `BirthDataFields`)
+ * are all still in active use - inside a Case's Chart Data tab
+ * (`CaseChartData.jsx`) and its Create/Edit Case forms - so nothing
+ * reusable was deleted. `TopicRetrieval.jsx` (the Quick Calculator's own
+ * topic browser, functionally superseded by each Case's own Topics tab)
+ * is left in place, unused but preserved, rather than deleted.
  */
-const DEFAULT_INPUT = {
-  date: "",
-  time: "",
-  placeName: "",
-  latitude: "",
-  longitude: "",
-  ianaTimeZone: "",
-  timezone: "",
-  houseSystem: "placidus",
-  nodeType: "true",
-  lilithType: "mean",
-};
-
 function App() {
-  const [input, setInput] = useState(DEFAULT_INPUT);
-  const [chart, setChart] = useState(null);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("calculator");
-
-  const updateInput = (patch) => setInput((prev) => ({ ...prev, ...patch }));
-  const handleChange = (field) => (e) => updateInput({ [field]: e.target.value });
-
-  const handleCalculate = () => {
-    setError(null);
-    setChart(null);
-    try {
-      const result = calculateChart({
-        birthDate: input.date,
-        birthTime: input.time,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        utcOffset: input.timezone,
-        houseSystem: input.houseSystem,
-        nodeType: input.nodeType,
-        lilithType: input.lilithType,
-      });
-      setChart(result);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   return (
     <div className="workspace">
       <header>
@@ -69,133 +26,7 @@ function App() {
         <p className="subtitle">Case-Centered Interpretation Workspace｜以案例为中心的解盘工作台</p>
       </header>
 
-      <nav className="app-tab-nav">
-        <button type="button" className={activeTab === "calculator" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("calculator")}>
-          Quick Calculator｜快速计算
-        </button>
-        <button type="button" className={activeTab === "cases" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("cases")}>
-          Cases｜案例
-        </button>
-      </nav>
-
-      {activeTab === "cases" && <CaseWorkspace />}
-
-      {activeTab === "calculator" && (
-        <>
-      <section className="form">
-        <BirthDataFields value={input} onChange={updateInput} idPrefix="qc" />
-
-        <div className="field">
-          <label htmlFor="houseSystem">House System｜宫位制</label>
-          <select id="houseSystem" value={input.houseSystem} onChange={handleChange("houseSystem")}>
-            {SUPPORTED_HOUSE_SYSTEMS.map((sys) => (
-              <option key={sys} value={sys}>
-                {sys[0].toUpperCase() + sys.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="nodeType">Node Type｜交点类型</label>
-          <select id="nodeType" value={input.nodeType} onChange={handleChange("nodeType")}>
-            <option value="true">True Node｜真交点</option>
-            <option value="mean">Mean Node｜平交点</option>
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="lilithType">Lilith Type｜莉莉丝类型</label>
-          <select id="lilithType" value={input.lilithType} onChange={handleChange("lilithType")}>
-            <option value="mean">Mean｜平位</option>
-            <option value="osculating">Osculating｜密切点</option>
-          </select>
-        </div>
-
-        <button type="button" className="calculate-btn" onClick={handleCalculate}>
-          Calculate Chart｜开始计算
-        </button>
-      </section>
-
-      {error && <div className="error-box">{error}</div>}
-
-      {chart && (
-        <section className="results">
-          <h2>Planets｜行星</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Body｜天体</th>
-                <th>Sign｜星座</th>
-                <th>Degree｜度数</th>
-                <th>House｜宫位</th>
-                <th>Motion｜状态</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chart.planets.map((p) => (
-                <tr key={p.key}>
-                  <td>
-                    {p.english}｜{p.chinese}
-                  </td>
-                  <td>
-                    {p.sign.symbol} {p.sign.english}｜{p.sign.chinese}
-                  </td>
-                  <td>{formatDMS(p.degreeInSign)}</td>
-                  <td>{formatHouseLabel(p.house)}</td>
-                  <td className={p.retrograde ? "retrograde" : "direct"}>
-                    {p.retrograde ? "Retrograde｜逆行" : "Direct｜顺行"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h2>Angles｜四轴</h2>
-          <table>
-            <tbody>
-              <tr>
-                <td>ASC｜上升</td>
-                <td>
-                  {chart.angles.asc.sign.symbol} {chart.angles.asc.sign.english}｜{chart.angles.asc.sign.chinese}
-                </td>
-                <td>{formatDMS(chart.angles.asc.degreeInSign)}</td>
-              </tr>
-              <tr>
-                <td>MC｜天顶</td>
-                <td>
-                  {chart.angles.mc.sign.symbol} {chart.angles.mc.sign.english}｜{chart.angles.mc.sign.chinese}
-                </td>
-                <td>{formatDMS(chart.angles.mc.degreeInSign)}</td>
-              </tr>
-              <tr>
-                <td>IC｜天底</td>
-                <td>
-                  {chart.angles.ic.sign.symbol} {chart.angles.ic.sign.english}｜{chart.angles.ic.sign.chinese}
-                </td>
-                <td>{formatDMS(chart.angles.ic.degreeInSign)}</td>
-              </tr>
-              <tr>
-                <td>DESC｜下降</td>
-                <td>
-                  {chart.angles.desc.sign.symbol} {chart.angles.desc.sign.english}｜{chart.angles.desc.sign.chinese}
-                </td>
-                <td>{formatDMS(chart.angles.desc.degreeInSign)}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <ChartMetaAndHouses chart={chart} />
-
-          <ModernWestern chart={chart} />
-          <ClassicalAstrology chart={chart} />
-          <VedicAstrology chart={chart} />
-          <CrossSystemEvidence chart={chart} />
-          <TopicRetrieval chart={chart} />
-        </section>
-      )}
-        </>
-      )}
+      <CaseWorkspace />
     </div>
   );
 }

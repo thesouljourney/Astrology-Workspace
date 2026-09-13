@@ -5,12 +5,6 @@
    large phase's rules stay easy to find - same design tokens/colors as
    the rest of the app, not a redesign. */
 
-.app-tab-nav {
-  display: flex;
-  gap: 8px;
-  margin: 16px 0;
-}
-
 .case-manager,
 .case-overview,
 .topic-workspace {
@@ -574,16 +568,31 @@
   color: #333;
 }
 
-/* Case Chart Data - reuses Quick Calculator's own components, with
-   their raw/debug expanders hidden here only (Part 9). Underlying data
-   is untouched; Quick Calculator still shows this same information. */
+/* Case Chart Data - four clearly separated system views (Targeted UX
+   Refinement). Only the selected system's already-locked display
+   component renders at a time - never a single long mixed page. */
 .case-chart-data details.raw-data {
   display: none;
 }
 
-.case-chart-data > section,
-.case-chart-data > div {
+.chart-data-system-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.chart-data-system-panel > section,
+.chart-data-system-panel > div {
   margin-top: 20px;
+}
+
+.chart-data-system-panel > section:first-child,
+.chart-data-system-panel > div:first-child {
+  margin-top: 0;
 }
 
 /* Related Anchors (Part 7). */

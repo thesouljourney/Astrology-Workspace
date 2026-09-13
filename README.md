@@ -3775,3 +3775,61 @@ Birth Data → Accurate Astronomical Calculation → Structured Astrology Data �
 ```
 
 Software calculates. You interpret.
+
+---
+
+### 28a. Targeted UX Refinement — Quick Calculator removed, Chart Data split by system
+
+A narrow follow-up to Section 28 above (same non-phase, non-LOCKED
+status). Two changes only:
+
+**Quick Calculator removed as a navigation destination.** `App.jsx` no
+longer has a tab nav or an `activeTab` state at all - it renders
+`<CaseWorkspace />` directly and unconditionally, so Cases is the app's
+sole/default entry ("App loads → Cases page"). The locked calculation
+engine (`calculateChart()`, everything under `src/astrology/`) is
+completely untouched; Case creation/editing already called it via
+`computeCaseChart()` before this change and still does. Every display
+component the old Quick Calculator page used
+(`ModernWestern`/`ClassicalAstrology`/`VedicAstrology`/
+`CrossSystemEvidence`/`ChartMetaAndHouses`/the shared `BirthDataFields`)
+remains in active use inside Case Chart Data and Case forms - nothing
+reusable was deleted. `TopicRetrieval.jsx` (the Quick Calculator's own
+topic browser, functionally superseded by each Case's own Topics tab)
+is left in place, unused but preserved, per the task's explicit caution
+against aggressive deletion. One genuinely dead byproduct was removed:
+the now-unreachable `.app-tab-nav` CSS rule, and `ModernWestern.jsx`'s
+raw calculation-data `<details>` dump (its only remaining consumer is
+Case Chart Data, where raw data was already forbidden - it is now
+removed outright rather than merely CSS-hidden).
+
+**Case Chart Data reorganized into four clearly separated system views**
+(`CaseChartData.jsx`, exported `SYSTEMS` config): Modern Western /
+Classical / Vedic / Cross-System, selected via a tab row - only one
+system's already-locked display component renders at a time, never one
+long mixed page. Houses live in the Modern Western view
+(`ChartMetaAndHouses`); "Related Anchors" (ASC ↔ ASC ↔ Lagna,
+"Conceptually Related｜概念相关" / "Not Numerically Equivalent｜数值不可直接等同")
+moved from a separate wrapper into `CrossSystemEvidence.jsx` itself,
+positioned right after its "Shared Bodies" table - safe because that
+component's only remaining consumer is this Cross-System tab. Its
+`SHARED_BODY_KEYS` export (the 7 traditional shared planets) is
+directly tested to never include `"asc"`. No other workspace (Topics,
+Case Notes, Final Reading, History, Birth Place search, timezone
+resolution, repository architecture) was touched.
+
+**Testing**: 873/40/0 baseline (Section 28's own final count) →
+**885 tests / 41 files / 0 failures** (12 new, all additive) - see
+`src/components/__tests__/targetedUxRefinement.test.js`. Consistent
+with the project's established precedent (no React rendering test
+infrastructure exists - see `editCaseLifecycle.test.js`'s own note),
+the new tests target exported configuration (`SYSTEMS`,
+`SHARED_BODY_KEYS`) and source-level regression guards (e.g. "App.jsx
+never contains the literal removed nav label again") rather than
+rendering JSX. Live behavior - tab switching, exactly one system
+visible at a time, Classical Aspects reachable, Vedic doesn't claim
+Drishti, Cross-System excludes ASC from Shared Bodies, no raw/debug
+control anywhere in Case Chart Data, zero horizontal overflow - was
+verified with a headless-browser workflow script at
+390px/430px/768px/1400px (App load → New Case → Chart Data → each of
+the four system tabs → Related Anchors).
