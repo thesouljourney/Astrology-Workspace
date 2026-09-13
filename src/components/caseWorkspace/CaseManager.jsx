@@ -2,8 +2,10 @@ import { useState } from "react";
 import { computeCaseChart } from "../../caseWorkspace/caseChart.js";
 import { deriveCalculationProfile, computeChartFingerprint } from "../../caseWorkspace/fingerprint.js";
 import { CASE_STATUS } from "../../caseWorkspace/caseModel.js";
+import { BirthDataFields } from "../shared/BirthDataFields.jsx";
 import { useAsyncData } from "./useAsyncData.js";
 
+/** Production initial state (Part 1): a new Case form starts entirely empty - no pre-filled birth data of any kind. */
 const NEW_CASE_DEFAULTS = {
   caseName: "",
   date: "",
@@ -11,7 +13,8 @@ const NEW_CASE_DEFAULTS = {
   placeName: "",
   latitude: "",
   longitude: "",
-  timezone: "+08:00",
+  ianaTimeZone: "",
+  timezone: "",
   houseSystem: "placidus",
   nodeType: "true",
   lilithType: "mean",
@@ -23,6 +26,7 @@ function NewCaseForm({ caseRepo, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
 
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const updateBirthFields = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -30,7 +34,7 @@ function NewCaseForm({ caseRepo, onCreated }) {
     setError(null);
     setSubmitting(true);
     try {
-      const birthData = { date: form.date, time: form.time, placeName: form.placeName, latitude: form.latitude, longitude: form.longitude, timezone: form.timezone };
+      const birthData = { date: form.date, time: form.time, placeName: form.placeName, latitude: form.latitude, longitude: form.longitude, ianaTimeZone: form.ianaTimeZone, timezone: form.timezone };
       const chart = computeCaseChart({ birthData, calculationProfile: { westernHouseSystem: form.houseSystem, westernNodeType: form.nodeType, westernLilithType: form.lilithType } });
       const calculationProfile = deriveCalculationProfile(chart);
       const chartFingerprint = computeChartFingerprint(birthData, chart);
@@ -50,30 +54,7 @@ function NewCaseForm({ caseRepo, onCreated }) {
         <label htmlFor="nc-caseName">Case Name｜案例名称</label>
         <input id="nc-caseName" value={form.caseName} onChange={set("caseName")} placeholder="e.g. Client A" />
       </div>
-      <div className="field">
-        <label htmlFor="nc-date">Birth Date｜出生日期</label>
-        <input id="nc-date" type="date" value={form.date} onChange={set("date")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="nc-time">Birth Time｜出生时间</label>
-        <input id="nc-time" type="time" step="1" value={form.time} onChange={set("time")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="nc-place">Place Name｜出生地点</label>
-        <input id="nc-place" value={form.placeName} onChange={set("placeName")} placeholder="e.g. Batu Pahat, Johor, Malaysia" />
-      </div>
-      <div className="field">
-        <label htmlFor="nc-lat">Latitude｜纬度</label>
-        <input id="nc-lat" type="number" step="any" value={form.latitude} onChange={set("latitude")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="nc-lon">Longitude｜经度</label>
-        <input id="nc-lon" type="number" step="any" value={form.longitude} onChange={set("longitude")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="nc-tz">UTC Offset｜UTC 时区偏移</label>
-        <input id="nc-tz" value={form.timezone} onChange={set("timezone")} placeholder="+08:00" required />
-      </div>
+      <BirthDataFields value={form} onChange={updateBirthFields} idPrefix="nc" />
       <div className="field">
         <label htmlFor="nc-house">House System｜宫位制</label>
         <select id="nc-house" value={form.houseSystem} onChange={set("houseSystem")}>

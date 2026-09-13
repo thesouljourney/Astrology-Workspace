@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { computeCaseChart } from "../../caseWorkspace/caseChart.js";
 import { deriveCalculationProfile, computeChartFingerprint } from "../../caseWorkspace/fingerprint.js";
+import { BirthDataFields } from "../shared/BirthDataFields.jsx";
 
 /**
  * Edit Case — Phase 7 pre-lock audit fix (Part 4).
@@ -24,6 +25,7 @@ export function EditCaseForm({ caseRecord, caseRepo, onSaved, onCancel }) {
     placeName: caseRecord.birthData.placeName ?? "",
     latitude: caseRecord.birthData.latitude,
     longitude: caseRecord.birthData.longitude,
+    ianaTimeZone: caseRecord.birthData.ianaTimeZone ?? "",
     timezone: caseRecord.birthData.timezone,
     houseSystem: caseRecord.calculationProfile.westernHouseSystem ?? "placidus",
     nodeType: caseRecord.calculationProfile.westernNodeType ?? "true",
@@ -33,6 +35,7 @@ export function EditCaseForm({ caseRecord, caseRepo, onSaved, onCancel }) {
   const [saving, setSaving] = useState(false);
 
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const updateBirthFields = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -40,7 +43,7 @@ export function EditCaseForm({ caseRecord, caseRepo, onSaved, onCancel }) {
     setError(null);
     setSaving(true);
     try {
-      const birthData = { date: form.date, time: form.time, placeName: form.placeName, latitude: form.latitude, longitude: form.longitude, timezone: form.timezone };
+      const birthData = { date: form.date, time: form.time, placeName: form.placeName, latitude: form.latitude, longitude: form.longitude, ianaTimeZone: form.ianaTimeZone, timezone: form.timezone };
       const chart = computeCaseChart({ birthData, calculationProfile: { westernHouseSystem: form.houseSystem, westernNodeType: form.nodeType, westernLilithType: form.lilithType } });
       const calculationProfile = deriveCalculationProfile(chart);
       const chartFingerprint = computeChartFingerprint(birthData, chart);
@@ -60,30 +63,7 @@ export function EditCaseForm({ caseRecord, caseRepo, onSaved, onCancel }) {
         <label htmlFor="ec-caseName">Case Name｜案例名称</label>
         <input id="ec-caseName" value={form.caseName} onChange={set("caseName")} />
       </div>
-      <div className="field">
-        <label htmlFor="ec-date">Birth Date｜出生日期</label>
-        <input id="ec-date" type="date" value={form.date} onChange={set("date")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="ec-time">Birth Time｜出生时间</label>
-        <input id="ec-time" type="time" step="1" value={form.time} onChange={set("time")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="ec-place">Place Name｜出生地点</label>
-        <input id="ec-place" value={form.placeName} onChange={set("placeName")} placeholder="e.g. Batu Pahat, Johor, Malaysia" />
-      </div>
-      <div className="field">
-        <label htmlFor="ec-lat">Latitude｜纬度</label>
-        <input id="ec-lat" type="number" step="any" value={form.latitude} onChange={set("latitude")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="ec-lon">Longitude｜经度</label>
-        <input id="ec-lon" type="number" step="any" value={form.longitude} onChange={set("longitude")} required />
-      </div>
-      <div className="field">
-        <label htmlFor="ec-tz">UTC Offset｜UTC 时区偏移</label>
-        <input id="ec-tz" value={form.timezone} onChange={set("timezone")} placeholder="+08:00" required />
-      </div>
+      <BirthDataFields value={form} onChange={updateBirthFields} idPrefix="ec" />
       <div className="field">
         <label htmlFor="ec-house">House System｜宫位制</label>
         <select id="ec-house" value={form.houseSystem} onChange={set("houseSystem")}>

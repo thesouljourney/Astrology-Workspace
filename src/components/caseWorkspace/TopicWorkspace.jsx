@@ -76,6 +76,9 @@ export function TopicWorkspace({ caseRecord, chart, currentFingerprint, topicId,
         <p className="reception-note">
           {topic.definition.en}｜{topic.definition.zh}
         </p>
+        <a href="#ws-notes-anchor" className="ws-btn ws-btn-primary ws-jump-to-notes">
+          ↓ Start Writing｜开始撰写笔记
+        </a>
       </header>
 
       {showEarlierChartBanner && (
@@ -115,6 +118,7 @@ export function TopicWorkspace({ caseRecord, chart, currentFingerprint, topicId,
       {versionsLoading && <p className="reception-note">Loading notes…｜加载笔记中…</p>}
       {versionsError && <div className="error-box">{versionsError.message}</div>}
 
+      <div id="ws-notes-anchor" />
       {!versionsLoading && !versionsError && (
         <NotesAndJudgmentSection
           key={selectedVersion?.noteId ?? "no-version"}

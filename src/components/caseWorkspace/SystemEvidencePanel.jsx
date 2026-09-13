@@ -38,6 +38,14 @@ function summarize(item) {
   return null;
 }
 
+/**
+ * Presentation-only visual hierarchy (Production UX Refactor, Part 10):
+ * the actual astrology content (the resolved value) leads; the category
+ * label becomes a small caption and the availability badge a muted tag
+ * rather than the dominant colored element - "available" is implicit
+ * once evidence is shown at all, so it no longer needs to visually lead.
+ * No data/markup meaning changes: same `item` fields, same DOM nodes.
+ */
 export function EvidenceItemRow({ item }) {
   const summary = summarize(item);
   return (
@@ -50,12 +58,6 @@ export function EvidenceItemRow({ item }) {
       </div>
       {summary && <div className="ws-evidence-summary">{summary}</div>}
       {item.neutralReason && <div className="reception-note">{item.neutralReason}</div>}
-      {item.value !== null && (
-        <details className="ws-evidence-raw">
-          <summary>Raw｜原始数据</summary>
-          <pre>{JSON.stringify(item.value, null, 1)}</pre>
-        </details>
-      )}
     </li>
   );
 }
@@ -71,6 +73,21 @@ function EvidenceGroup({ title, items }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Missing/Future evidence (Part 11): truthful but never a primary visual element - a compact collapsed count, not one large card per item. */
+function MissingEvidenceGroup({ items }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <details className="ws-missing-evidence-group">
+      <summary>Missing / Future Evidence｜尚未实现资料 ({items.length})</summary>
+      <ul>
+        {items.map((item) => (
+          <EvidenceItemRow key={item.evidenceId} item={item} />
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -96,7 +113,7 @@ export function SystemEvidencePanel({ systemLabel, bundle }) {
 
       {GROUP_ORDER.map((group) => <EvidenceGroup key={group} title={GROUP_LABEL[group]} items={grouped[group]} />)}
 
-      <EvidenceGroup title="Missing / Future Evidence｜尚未实现的证据" items={grouped.missing_evidence} />
+      <MissingEvidenceGroup items={grouped.missing_evidence} />
       <EvidenceGroup title="Convention Pending｜约定待定" items={grouped.convention_pending} />
 
       {grouped.excluded?.length > 0 && (

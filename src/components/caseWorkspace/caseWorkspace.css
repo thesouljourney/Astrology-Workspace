@@ -161,6 +161,16 @@
   margin-bottom: 2px;
 }
 
+.ws-jump-to-notes {
+  display: inline-block;
+  margin-top: 6px;
+  text-decoration: none;
+}
+
+#ws-notes-anchor {
+  scroll-margin-top: 12px;
+}
+
 .ws-banner {
   background: #fff7e6;
   border: 1px solid #f0c36d;
@@ -259,38 +269,53 @@
   gap: 4px 10px;
 }
 
+/* Part 10: the category label is a small caption, not the headline - the
+   actual astrology content (.ws-evidence-summary) carries the visual
+   weight instead. */
 .ws-evidence-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #777;
 }
 
+/* Part 10: availability is implicit once evidence is shown at all, so
+   the badge is a muted tag, not a bold colored pill leading the row. */
 .ws-availability-badge {
   border-radius: 3px;
   padding: 1px 5px;
-  font-size: 0.66rem;
-  color: #fff;
+  font-size: 0.62rem;
+  color: #666;
+  background: #eee;
   white-space: nowrap;
 }
 
+/* A quiet color hint survives per status (still identifiable at a
+   glance) but no longer a bold, attention-grabbing fill (Part 10). */
 .ws-availability-available {
-  background: #2a6f2a;
+  color: #2a6f2a;
 }
 .ws-availability-contextual_available {
-  background: #a5824a;
+  color: #8a6a2a;
 }
 .ws-availability-future_required {
-  background: #999;
+  color: #888;
 }
 .ws-availability-excluded {
-  background: #b02a2a;
+  color: #b02a2a;
 }
 .ws-availability-convention_pending {
-  background: #8a5aa5;
+  color: #7a4a95;
 }
 
+/* Part 10: the resolved astrology content is the primary visual element
+   of an evidence row - larger and darker than the category label/badge
+   above it. */
 .ws-evidence-summary {
-  font-size: 0.76rem;
-  color: #333;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1a1a1a;
   margin-top: 3px;
   overflow-wrap: break-word;
 }
@@ -311,6 +336,29 @@
   border-radius: 4px;
   padding: 6px;
   max-width: 100%;
+}
+
+.ws-missing-evidence-group {
+  margin-top: 10px;
+  background: #f8f8f8;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.ws-missing-evidence-group summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  color: #888;
+  padding: 3px 0;
+}
+
+.ws-missing-evidence-group ul {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ws-concept-status,
@@ -426,4 +474,204 @@
   gap: 4px;
   font-size: 0.78rem;
   color: #444;
+}
+
+/* Production UX Refactor - shared Birth Data / Birth Place search. */
+.bdi-place-field {
+  position: relative;
+}
+
+.bdi-place-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.bdi-place-suggestions li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bdi-place-suggestions li button:hover {
+  background: #f0f0f0;
+}
+
+.bdi-resolved-note {
+  margin-top: 2px;
+}
+
+.bdi-advanced {
+  grid-column: 1 / -1;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 2px;
+}
+
+.bdi-advanced summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.bdi-advanced .field {
+  margin-top: 8px;
+}
+
+/* Case-level tab shell. */
+.case-tab-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0 16px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+}
+
+/* Case Overview - concise 3-system snapshot (Part 6). */
+.cos-system-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cos-system-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.cos-system-card h4 {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
+.cos-system-card p {
+  margin: 2px 0;
+  font-size: 0.82rem;
+  color: #333;
+}
+
+/* Case Chart Data - reuses Quick Calculator's own components, with
+   their raw/debug expanders hidden here only (Part 9). Underlying data
+   is untouched; Quick Calculator still shows this same information. */
+.case-chart-data details.raw-data {
+  display: none;
+}
+
+.case-chart-data > section,
+.case-chart-data > div {
+  margin-top: 20px;
+}
+
+/* Related Anchors (Part 7). */
+.related-anchors {
+  margin-top: 12px;
+}
+
+/* Case Notes / Final Reading. */
+.case-notes-section,
+.final-reading-section {
+  margin-top: 8px;
+}
+
+.case-notes-section textarea,
+.final-reading-section textarea {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.frs-topic-ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+
+.frs-topic-ref {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.frs-topic-ref h5 {
+  margin: 0 0 4px;
+  font-size: 0.82rem;
+}
+
+.frs-topic-ref-text {
+  font-size: 0.8rem;
+  color: #333;
+  margin: 4px 0 0;
+  overflow-wrap: break-word;
+}
+
+/* Case History. */
+.case-history-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.case-history-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.case-history-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.case-history-item-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.case-history-topic-chip {
+  font-size: 0.72rem;
+  background: #f4f2ee;
+  border-radius: 3px;
+  padding: 2px 6px;
 }

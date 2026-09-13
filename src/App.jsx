@@ -3,6 +3,8 @@ import { calculateChart } from "./astrology/ephemeris.js";
 import { formatDMS } from "./utils/formatDegree.js";
 import { formatHouseLabel } from "./utils/houseLabel.js";
 import { SUPPORTED_HOUSE_SYSTEMS } from "./astrology/houses.js";
+import { BirthDataFields } from "./components/shared/BirthDataFields.jsx";
+import ChartMetaAndHouses from "./components/ChartMetaAndHouses.jsx";
 import ModernWestern from "./components/ModernWestern.jsx";
 import ClassicalAstrology from "./components/ClassicalAstrology.jsx";
 import VedicAstrology from "./components/VedicAstrology.jsx";
@@ -11,12 +13,21 @@ import TopicRetrieval from "./components/TopicRetrieval.jsx";
 import CaseWorkspace from "./components/caseWorkspace/CaseWorkspace.jsx";
 import "./App.css";
 
+/**
+ * Production initial state (Production UX Refactor, Part 1): a fresh
+ * Quick Calculator session always starts EMPTY. The project's golden
+ * verification chart (1994-11-21 01:44, Batu Pahat) now lives ONLY in
+ * test/fixture files (see `src/astrology/__tests__/verification.test.js`
+ * and the caseWorkspace test fixtures) - never as a production default.
+ */
 const DEFAULT_INPUT = {
-  birthDate: "1994-11-21",
-  birthTime: "01:44:00",
-  latitude: "1.8548",
-  longitude: "102.9325",
-  utcOffset: "+08:00",
+  date: "",
+  time: "",
+  placeName: "",
+  latitude: "",
+  longitude: "",
+  ianaTimeZone: "",
+  timezone: "",
   houseSystem: "placidus",
   nodeType: "true",
   lilithType: "mean",
@@ -28,15 +39,23 @@ function App() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("calculator");
 
-  const handleChange = (field) => (e) => {
-    setInput((prev) => ({ ...prev, [field]: e.target.value }));
-  };
+  const updateInput = (patch) => setInput((prev) => ({ ...prev, ...patch }));
+  const handleChange = (field) => (e) => updateInput({ [field]: e.target.value });
 
   const handleCalculate = () => {
     setError(null);
     setChart(null);
     try {
-      const result = calculateChart(input);
+      const result = calculateChart({
+        birthDate: input.date,
+        birthTime: input.time,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        utcOffset: input.timezone,
+        houseSystem: input.houseSystem,
+        nodeType: input.nodeType,
+        lilithType: input.lilithType,
+      });
       setChart(result);
     } catch (err) {
       setError(err.message);
@@ -47,12 +66,12 @@ function App() {
     <div className="workspace">
       <header>
         <h1>Personal Astrology Workspace｜个人占星工作台</h1>
-        <p className="subtitle">Calculation Prototype｜计算原型</p>
+        <p className="subtitle">Case-Centered Interpretation Workspace｜以案例为中心的解盘工作台</p>
       </header>
 
       <nav className="app-tab-nav">
         <button type="button" className={activeTab === "calculator" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("calculator")}>
-          Calculator｜计算器
+          Quick Calculator｜快速计算
         </button>
         <button type="button" className={activeTab === "cases" ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab("cases")}>
           Cases｜案例
@@ -64,60 +83,7 @@ function App() {
       {activeTab === "calculator" && (
         <>
       <section className="form">
-        <div className="field">
-          <label htmlFor="birthDate">Birth Date｜出生日期</label>
-          <input
-            id="birthDate"
-            type="text"
-            placeholder="YYYY-MM-DD"
-            value={input.birthDate}
-            onChange={handleChange("birthDate")}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="birthTime">Birth Time｜出生时间</label>
-          <input
-            id="birthTime"
-            type="text"
-            placeholder="HH:MM:SS"
-            value={input.birthTime}
-            onChange={handleChange("birthTime")}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="latitude">Latitude｜纬度</label>
-          <input
-            id="latitude"
-            type="text"
-            placeholder="-90 to 90"
-            value={input.latitude}
-            onChange={handleChange("latitude")}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="longitude">Longitude｜经度</label>
-          <input
-            id="longitude"
-            type="text"
-            placeholder="-180 to 180"
-            value={input.longitude}
-            onChange={handleChange("longitude")}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="utcOffset">UTC Offset｜UTC 时区偏移</label>
-          <input
-            id="utcOffset"
-            type="text"
-            placeholder="+08:00"
-            value={input.utcOffset}
-            onChange={handleChange("utcOffset")}
-          />
-        </div>
+        <BirthDataFields value={input} onChange={updateInput} idPrefix="qc" />
 
         <div className="field">
           <label htmlFor="houseSystem">House System｜宫位制</label>
@@ -155,12 +121,6 @@ function App() {
 
       {chart && (
         <section className="results">
-          <div className="meta">
-            <div>UTC｜世界协调时: {chart.meta.utcIso}</div>
-            <div>Julian Day｜儒略日: {chart.meta.julianDay.toFixed(6)}</div>
-            <div>House System｜宫位制: {chart.meta.houseSystem}</div>
-          </div>
-
           <h2>Planets｜行星</h2>
           <table>
             <thead>
@@ -225,27 +185,7 @@ function App() {
             </tbody>
           </table>
 
-          <h2>House Cusps｜宫位</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>House｜宫位</th>
-                <th>Sign｜星座</th>
-                <th>Degree｜度数</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chart.houseCusps.map((c) => (
-                <tr key={c.house}>
-                  <td>{formatHouseLabel(c.house)}</td>
-                  <td>
-                    {c.sign.symbol} {c.sign.english}｜{c.sign.chinese}
-                  </td>
-                  <td>{formatDMS(c.degreeInSign)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ChartMetaAndHouses chart={chart} />
 
           <ModernWestern chart={chart} />
           <ClassicalAstrology chart={chart} />

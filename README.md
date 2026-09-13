@@ -3614,6 +3614,160 @@ remains intact and enforced by dedicated test. Final audited commit:
 
 ---
 
+## 28. Production UX Refactor (UI/UX layer only — not a numbered phase)
+
+A case-centered UX refactor over the already-locked Phases 1-7. It
+changes navigation, forms, and page layout only; it never touches
+Phase 1-6 astrology calculation logic, Phase 6 topic recipes/sourcePath
+semantics, or Phase 7's repository/autosave/fingerprint/versioning/
+Final-immutability/historical-notes guarantees. Not marked LOCKED.
+
+**Production initial state.** A fresh Quick Calculator session and a new
+Case form both start with completely empty birth data - the project's
+golden verification chart (1994-11-21 01:44, Batu Pahat) now appears
+only in test/fixture files, never as a UI default.
+
+**Shared Birth Data input** (`src/components/shared/BirthDataFields.jsx`)
+is used identically by Quick Calculator, Create Case, and Edit Case:
+Birth Date / Birth Time / Birth Place, plus a collapsed "Advanced
+Details" section (latitude/longitude/IANA timezone/resolved UTC offset)
+for manual entry or correction. It outputs exactly the same
+`{date, time, latitude, longitude, timezone}` shape `calculateChart()`/
+`computeCaseChart()` already accepted; `placeName` and the new
+`ianaTimeZone` field are additional, fingerprint-inert metadata (see
+`fingerprint.js`'s `fingerprintPayload()`, which reads only
+`date/time/latitude/longitude/timezone` off `birthData`).
+
+**Offline Birth Place search & historical timezone resolution**
+(`src/geo/`) - the architecture investigated and built for this refactor:
+
+- *Place data*: `src/geo/cityIndex.data.json`, a trimmed, static, MIT-
+  licensed snapshot of the `city-timezones` npm package (7,281 places:
+  city/province/country/lat/lng/IANA timezone), generated once via
+  `scripts/generateCityIndex.mjs` and committed to the repo.
+  `city-timezones` itself is a devDependency only (used solely to
+  regenerate this file) - it is never imported at runtime, and the app
+  never makes a network geocoding request of any kind (no Google/
+  Mapbox/GeoNames/Nominatim/etc.). `src/geo/placeSearch.js` loads this
+  dataset via a dynamic `import()`, so Vite code-splits it into its own
+  chunk (~184 KB gzipped) fetched only when a Birth Place field is
+  actually used - never part of the initial app bundle (confirmed via
+  `npm run build`'s chunk output).
+- *Historical UTC offset resolution*: **zero new runtime dependency**.
+  `src/geo/timezoneResolution.js` uses the JS engine's own built-in
+  `Intl.DateTimeFormat` (`timeZoneName: "longOffset"`), which is backed
+  by the full IANA tz database (via ICU) including historical
+  transitions and DST rules - the same authoritative source a library
+  like moment-timezone/luxon would otherwise have to bundle as static
+  data. Verified against the project's own golden chart (Asia/Kuala_Lumpur,
+  1994-11-21 → resolves to `+08:00`, not today's offset), a pre-1982
+  Peninsular Malaysia date (→ `+07:30`), US Eastern DST/standard time,
+  and a half-hour-offset zone (Asia/Kolkata → `+05:30`); see
+  `src/geo/__tests__/timezoneResolution.test.js`. A real cross-engine
+  bug was found and fixed during browser verification: some engines
+  (confirmed on headless Chromium) render exactly zero offset as bare
+  `"GMT"` rather than `"GMT+00:00"`, which an earlier version of the
+  offset-parsing regex did not handle - `offsetMinutesAt()` now treats
+  bare `"GMT"` as offset 0, with a regression test locking this in.
+  Browser support requirement: `timeZoneName: "longOffset"` (Chrome 96+,
+  Firefox 110+, Safari 15.4+, Node 18+); if unsupported,
+  `isTimezoneResolutionSupported()` returns false and the UI falls back
+  to manual UTC-offset entry rather than guessing.
+- Every Birth Place field allows fully manual latitude/longitude/IANA
+  timezone/UTC-offset entry as a fallback for a place not found in the
+  local index (verified in-browser).
+
+**Navigation.** Top-level tabs renamed "Quick Calculator｜快速计算" /
+"Cases｜案例"; no authentication/account functionality added.
+
+**Case = complete workspace.** A Case now has its own tab shell
+(`CaseOverview.jsx`): Overview / Chart Data / Topics / Case Notes /
+Final Reading / History.
+
+- *Overview* - concise: case name, birth summary, and a compact 3-system
+  snapshot (Western Sun/Moon/ASC, Classical sect, Vedic Lagna/Moon
+  Nakshatra); no raw technical dump.
+- *Chart Data* (`CaseChartData.jsx`) - the Case's complete technical
+  reference library. Reuses the exact same already-calculated `chart`
+  and the exact same locked display components already built for Quick
+  Calculator (`ModernWestern`/`ClassicalAstrology`/`VedicAstrology`/
+  `CrossSystemEvidence`/`ChartMetaAndHouses`) - no second astrology
+  engine, no new calculation. Adds one presentation-only "Related
+  Anchors" section over already-locked values (`chart.angles.asc`,
+  `chart.vedic.summary.chartOverview.lagna`), explicitly labeled
+  "Conceptually Related Anchor｜概念相关核心锚点" /
+  "Not Numerically Equivalent｜数值不可直接等同" - it does not add ASC
+  to Cross-System Evidence's Shared Bodies count or claim tropical ASC
+  and sidereal Lagna are numerically equivalent; Phase 5's own
+  equivalence rules are unchanged and displayed unmodified immediately
+  below it. Classical Aspects are reachable here without returning to
+  Quick Calculator.
+- *Topics* - the existing 8-topic grid/`TopicWorkspace` flow, unchanged
+  in astrology content. Two workflow refinements: a "↓ Start Writing｜
+  开始撰写笔记" link at the top of each Topic Workspace jumps straight to
+  the notes section without scrolling past the evidence first, and each
+  system's evidence row now leads visually with the resolved astrology
+  content (e.g. "Sun｜太阳 — Scorpio, Bhava 4, Anuradha Pada 1") rather
+  than its availability badge, which is now a small muted tag -
+  availability is implicit once evidence is shown at all
+  (`SystemEvidencePanel.jsx`, CSS-only + one markup reorder, no data
+  change). `future_required` items are grouped into one compact
+  collapsed "Missing / Future Evidence｜尚未实现资料 (N)" section per
+  system instead of one large card per item; `convention_pending` stays
+  visible, unchanged. Raw JSON evidence dumps are removed from this
+  view entirely (the underlying `item.value`/`sourcePath` data is
+  untouched and still covered by Phase 6's own tests).
+- *Case Notes* (`CaseNotesSection.jsx` / `localCaseNotesRepository.js`) -
+  new: freeform, autosaved observations about the whole Case, not tied
+  to one Topic. Scoped by `caseId` only (not versioned or fingerprint-
+  isolated, unlike Topic Notes - these are working notes about the
+  person/consultation, not a per-chart-version technical interpretation).
+- *Final Reading* (`FinalReadingSection.jsx` / `localFinalReadingRepository.js`) -
+  new: a human-authored, Case-level synthesis (Overall Impression /
+  Repeated Themes / Cross-System Convergence / Cross-System Differences /
+  Final Synthesis), autosaved. Displays each Topic's current Final
+  Interpretation LIVE for reference (read directly from
+  `notesRepository`, never copied into storage) - nothing here is
+  AI-generated or auto-invented.
+- *History* (`CaseHistorySection.jsx`) - new: a read-only, presentation-
+  only aggregation of every `chartFingerprint` this Case has ever had
+  notes under, across all 8 Topics, via Phase 7's already-locked
+  `notesRepository.listFingerprints()` - not a second versioning
+  mechanism.
+
+Both new repositories follow Phase 7's exact isolation/async pattern
+(`localCaseRepository.js`/`localNotesRepository.js`): every public
+method is `async` (Promise-returning), no direct `localStorage` access
+from any UI component, and each is covered by its own repository test
+file (`caseNotesRepository.test.js`, `finalReadingRepository.test.js`).
+
+**Quick Calculator** keeps its full existing functionality (including
+its own raw/debug expanders, left untouched) as a temporary,
+non-persisted calculation tool; both it and Cases call the same locked
+`calculateChart()`.
+
+**Testing.** Baseline before this refactor: 848 tests / 36 files / 0
+failures. After: **873 tests / 40 files / 0 failures** - no existing
+test was weakened or deleted; all new tests are additive
+(`geo/__tests__/{timezoneResolution,placeSearch}.test.js`,
+`caseWorkspace/__tests__/{caseNotesRepository,finalReadingRepository}.test.js`).
+Production build succeeds (`npm run build`); the place-data chunk is
+confirmed code-split and excluded from the initial bundle. Manual/
+responsive verification was performed with a headless-browser script at
+390px/430px/768px/1400px across Quick Calculator, Birth Place search,
+Case creation, all 6 Case tabs, and an individual Topic Workspace - zero
+horizontal overflow and zero console/page errors at any width; this is
+also how the "GMT" vs "GMT+00:00" cross-engine bug above was caught and
+fixed.
+
+**Known limitations / not fully implemented in this pass**: the Topic
+Workspace is not restructured into a side-by-side evidence/notes desktop
+layout (Part 12's "evidence and writing side-by-side on desktop" is
+addressed only via the jump-to-notes link, not a two-column grid); the
+overall visual design is CSS-level and reuses the app's existing look
+rather than a full visual redesign (Part 16 was treated as lowest
+priority, per its own instruction). Neither is an astrology defect.
+
 No interpretation is generated anywhere in this codebase, by design:
 
 ```

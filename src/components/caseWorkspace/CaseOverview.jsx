@@ -2,20 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { computeCaseChart } from "../../caseWorkspace/caseChart.js";
 import { computeChartFingerprint } from "../../caseWorkspace/fingerprint.js";
 import { PHASE6_TOPIC_IDS } from "../../caseWorkspace/noteModel.js";
+import { TOPIC_LABELS } from "./topicLabels.js";
 import { TopicWorkspace } from "./TopicWorkspace.jsx";
 import { EditCaseForm } from "./EditCaseForm.jsx";
+import { CaseChartData } from "./CaseChartData.jsx";
+import { CaseNotesSection } from "./CaseNotesSection.jsx";
+import { FinalReadingSection } from "./FinalReadingSection.jsx";
+import { CaseHistorySection } from "./CaseHistorySection.jsx";
 import { useAsyncData } from "./useAsyncData.js";
 
-const TOPIC_LABELS = {
-  self_core_nature: "Self / Core Nature｜本我与人格核心",
-  career: "Career｜事业",
-  wealth: "Wealth｜财富与资源",
-  relationship: "Relationship｜感情与亲密关系",
-  family_roots: "Family & Roots｜家庭、根基与归属",
-  parents: "Parents｜父母",
-  siblings: "Siblings｜兄弟姐妹",
-  inner_shadow: "Inner Shadow｜内在阴影",
-};
+const TABS = [
+  { id: "overview", label: "Overview｜总览" },
+  { id: "chartData", label: "Chart Data｜星盘资料" },
+  { id: "topics", label: "Topics｜主题解盘" },
+  { id: "caseNotes", label: "Case Notes｜整盘笔记" },
+  { id: "finalReading", label: "Final Reading｜完整解盘" },
+  { id: "history", label: "History｜历史记录" },
+];
 
 async function topicStatus(notesRepo, caseId, topicId, currentFingerprint) {
   const current = await notesRepo.getCurrentVersion({ caseId, topicId, chartFingerprint: currentFingerprint });
@@ -25,16 +28,94 @@ async function topicStatus(notesRepo, caseId, topicId, currentFingerprint) {
   return { text: "Never Started｜未开始", hasNotes: false };
 }
 
+/** Concise Case Overview (Part 6): birth summary + a compact 3-system snapshot - never a raw technical dump (that lives in the Chart Data tab). */
+function CaseOverviewSummary({ chart }) {
+  const sun = chart.planets.find((p) => p.key === "sun");
+  const moon = chart.planets.find((p) => p.key === "moon");
+  const asc = chart.angles.asc;
+  const lagna = chart.vedic?.summary?.chartOverview?.lagna;
+  const moonNakshatra = chart.vedic?.summary?.grahas?.moon?.nakshatra;
+
+  return (
+    <div className="case-overview-summary">
+      <div className="cos-system-grid">
+        <div className="cos-system-card">
+          <h4>Modern Western｜现代西方</h4>
+          <p>
+            Sun｜太阳: {sun.sign.english} {sun.degreeInSign.toFixed(1)}°
+          </p>
+          <p>
+            Moon｜月亮: {moon.sign.english} {moon.degreeInSign.toFixed(1)}°
+          </p>
+          <p>
+            ASC｜上升: {asc.sign.english} {asc.degreeInSign.toFixed(1)}°
+          </p>
+        </div>
+        <div className="cos-system-card">
+          <h4>Classical｜古典</h4>
+          <p>Sect｜昼夜: {chart.classical.sect === "day" ? "Day Chart｜日盘" : "Night Chart｜夜盘"}</p>
+        </div>
+        <div className="cos-system-card">
+          <h4>Vedic｜印度</h4>
+          {lagna && (
+            <p>
+              Lagna｜上升点: {lagna.rashi} {lagna.degreeInRashi.toFixed(1)}°
+            </p>
+          )}
+          {moonNakshatra && (
+            <p>
+              Moon Nakshatra｜月亮宿: {moonNakshatra.name} (Pada {moonNakshatra.pada})
+            </p>
+          )}
+        </div>
+      </div>
+      <p className="reception-note">
+        See the Chart Data tab for the complete technical reference across all three systems｜完整技术资料请见"星盘资料"分页
+      </p>
+    </div>
+  );
+}
+
+/** The 8-topic progress grid + entry point into a single Topic's workspace (Part 8). */
+function CaseTopicsTab({ caseRecord, currentFingerprint, notesRepo, onSelectTopic }) {
+  const {
+    data: topicStatuses,
+    loading,
+    error,
+  } = useAsyncData(
+    () => Promise.all(PHASE6_TOPIC_IDS.map((topicId) => topicStatus(notesRepo, caseRecord.caseId, topicId, currentFingerprint))),
+    [notesRepo, caseRecord.caseId, currentFingerprint],
+  );
+
+  if (loading) return <p className="reception-note">Loading topic progress…｜加载主题进度中…</p>;
+  if (error) return <div className="error-box">{error.message}</div>;
+
+  return (
+    <div className="ws-topic-grid">
+      {PHASE6_TOPIC_IDS.map((topicId, i) => {
+        const status = topicStatuses[i];
+        return (
+          <button key={topicId} type="button" className={`ws-topic-card ${status.hasNotes ? "ws-topic-card-started" : ""}`} onClick={() => onSelectTopic(topicId)}>
+            <span className="ws-topic-card-label">{TOPIC_LABELS[topicId]}</span>
+            <span className="ws-topic-card-status">{status.text}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
- * One Case's birth-data summary + 8-topic progress grid, the Edit Case
- * workflow, and hosts the currently-open TopicWorkspace (if any).
- *
- * `notesRepository` methods are Promise-returning (Phase 7 pre-lock
- * audit fix), so the 8-topic status grid is loaded via `useAsyncData`
- * (all 8 topics in parallel) instead of being read synchronously during
- * render.
+ * One Case's complete workspace (Production UX Refactor, Part 5): a
+ * persistent header (name/birth summary/Edit Case) above a tabbed area -
+ * Overview / Chart Data / Topics / Case Notes / Final Reading / History.
+ * Selecting a Topic still opens the full-page `TopicWorkspace` (Part 12
+ * keeps its evidence+writing layout intact and central); Edit Case still
+ * replaces this view entirely while active - both unchanged behaviors
+ * from Phase 7, just re-hosted under the new tab shell.
  */
-export function CaseOverview({ caseRecord, caseRepo, notesRepo, onBack, onCaseChanged }) {
+export function CaseOverview({ caseRecord, caseRepo, notesRepo, caseNotesRepo, finalReadingRepo, onBack, onCaseChanged }) {
+  const [activeTab, setActiveTab] = useState("overview");
   const [selectedTopicId, setSelectedTopicId] = useState(null);
   const [editing, setEditing] = useState(false);
 
@@ -49,16 +130,6 @@ export function CaseOverview({ caseRecord, caseRepo, notesRepo, onBack, onCaseCh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseRecord.caseId, caseRecord.chartFingerprint, currentFingerprint]);
 
-  const {
-    data: topicStatuses,
-    loading,
-    error,
-    reload: reloadTopicStatuses,
-  } = useAsyncData(
-    () => Promise.all(PHASE6_TOPIC_IDS.map((topicId) => topicStatus(notesRepo, caseRecord.caseId, topicId, currentFingerprint))),
-    [notesRepo, caseRecord.caseId, currentFingerprint],
-  );
-
   if (selectedTopicId) {
     return (
       <TopicWorkspace
@@ -67,10 +138,7 @@ export function CaseOverview({ caseRecord, caseRepo, notesRepo, onBack, onCaseCh
         currentFingerprint={currentFingerprint}
         topicId={selectedTopicId}
         notesRepo={notesRepo}
-        onBack={() => {
-          setSelectedTopicId(null);
-          reloadTopicStatuses();
-        }}
+        onBack={() => setSelectedTopicId(null)}
       />
     );
   }
@@ -109,22 +177,20 @@ export function CaseOverview({ caseRecord, caseRepo, notesRepo, onBack, onCaseCh
         </button>
       </header>
 
-      {loading && <p className="reception-note">Loading topic progress…｜加载主题进度中…</p>}
-      {error && <div className="error-box">{error.message}</div>}
+      <nav className="case-tab-nav">
+        {TABS.map((tab) => (
+          <button key={tab.id} type="button" className={activeTab === tab.id ? "topic-btn active" : "topic-btn"} onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-      {!loading && !error && (
-        <div className="ws-topic-grid">
-          {PHASE6_TOPIC_IDS.map((topicId, i) => {
-            const status = topicStatuses[i];
-            return (
-              <button key={topicId} type="button" className={`ws-topic-card ${status.hasNotes ? "ws-topic-card-started" : ""}`} onClick={() => setSelectedTopicId(topicId)}>
-                <span className="ws-topic-card-label">{TOPIC_LABELS[topicId]}</span>
-                <span className="ws-topic-card-status">{status.text}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {activeTab === "overview" && <CaseOverviewSummary chart={chart} />}
+      {activeTab === "chartData" && <CaseChartData chart={chart} />}
+      {activeTab === "topics" && <CaseTopicsTab caseRecord={caseRecord} currentFingerprint={currentFingerprint} notesRepo={notesRepo} onSelectTopic={setSelectedTopicId} />}
+      {activeTab === "caseNotes" && <CaseNotesSection caseId={caseRecord.caseId} caseNotesRepo={caseNotesRepo} />}
+      {activeTab === "finalReading" && <FinalReadingSection caseId={caseRecord.caseId} currentFingerprint={currentFingerprint} notesRepo={notesRepo} finalReadingRepo={finalReadingRepo} />}
+      {activeTab === "history" && <CaseHistorySection caseId={caseRecord.caseId} currentFingerprint={currentFingerprint} notesRepo={notesRepo} />}
     </div>
   );
 }

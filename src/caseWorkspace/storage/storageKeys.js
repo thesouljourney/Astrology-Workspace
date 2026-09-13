@@ -20,3 +20,9 @@ export const caseKey = (caseId) => `${NAMESPACE}.case.${caseId}`;
 
 /** The full notes workspace for one (caseId, topicId) pair - every chartFingerprint this pair has ever had notes under, and every version within each. */
 export const notesWorkspaceKey = (caseId, topicId) => `${NAMESPACE}.notes.${caseId}.${topicId}`;
+
+/** General Case Notes (Production UX Refactor, Part 13) - one freeform document per Case, not tied to a Topic or chartFingerprint. */
+export const caseNotesKey = (caseId) => `${NAMESPACE}.caseNotes.${caseId}`;
+
+/** Final Reading (Production UX Refactor, Part 14) - one human-authored Case-level synthesis document per Case. */
+export const finalReadingKey = (caseId) => `${NAMESPACE}.finalReading.${caseId}`;

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createLocalCaseRepository } from "../../caseWorkspace/storage/localCaseRepository.js";
 import { createLocalNotesRepository } from "../../caseWorkspace/storage/localNotesRepository.js";
+import { createLocalCaseNotesRepository } from "../../caseWorkspace/storage/localCaseNotesRepository.js";
+import { createLocalFinalReadingRepository } from "../../caseWorkspace/storage/localFinalReadingRepository.js";
 import { CaseManager } from "./CaseManager.jsx";
 import { CaseOverview } from "./CaseOverview.jsx";
 import { useAsyncData } from "./useAsyncData.js";
@@ -19,6 +21,8 @@ import "./caseWorkspace.css";
 export default function CaseWorkspace() {
   const caseRepo = useMemo(() => createLocalCaseRepository(), []);
   const notesRepo = useMemo(() => createLocalNotesRepository(), []);
+  const caseNotesRepo = useMemo(() => createLocalCaseNotesRepository(), []);
+  const finalReadingRepo = useMemo(() => createLocalFinalReadingRepository(), []);
   const [selectedCaseId, setSelectedCaseId] = useState(null);
 
   const {
@@ -38,5 +42,15 @@ export default function CaseWorkspace() {
     return <CaseManager caseRepo={caseRepo} onOpenCase={(c) => setSelectedCaseId(c.caseId)} />;
   }
 
-  return <CaseOverview caseRecord={caseRecord} caseRepo={caseRepo} notesRepo={notesRepo} onBack={() => setSelectedCaseId(null)} onCaseChanged={reload} />;
+  return (
+    <CaseOverview
+      caseRecord={caseRecord}
+      caseRepo={caseRepo}
+      notesRepo={notesRepo}
+      caseNotesRepo={caseNotesRepo}
+      finalReadingRepo={finalReadingRepo}
+      onBack={() => setSelectedCaseId(null)}
+      onCaseChanged={reload}
+    />
+  );
 }
